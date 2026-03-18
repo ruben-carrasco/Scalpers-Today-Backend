@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from scalper_today.domain.exceptions import (
@@ -44,8 +44,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def universal_exception_handler(request: Request, exc: Exception):
-        # Don't catch FastAPI's own HTTPExceptions here, they have their own handler
-        if hasattr(exc, "status_code"):
+        if isinstance(exc, HTTPException):
             raise exc
 
         logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)

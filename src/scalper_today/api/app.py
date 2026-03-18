@@ -69,7 +69,7 @@ def custom_openapi(app: FastAPI) -> Dict[str, Any]:
 
     for path, methods in openapi_schema["paths"].items():
         # Check if this path should be public
-        is_public = any(pub in path for public in public_paths for pub in [public])
+        is_public = any(pub in path for pub in public_paths)
 
         if not is_public:
             for method in methods:
