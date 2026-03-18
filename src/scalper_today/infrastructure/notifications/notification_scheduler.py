@@ -193,15 +193,24 @@ class NotificationScheduler:
             logger.warning(f"No device tokens found for {len(users_to_notify)} users")
             return
 
-        # Send notification
-        result = await self.expo_push_service.send_event_alert(
-            tokens=all_tokens,
-            event_name=event.title,
-            importance=event.importance,
-            country=event.country,
-            currency=event.currency,
-            scheduled_time=event.time,
-        )
+        # Send notification with retry
+        result = None
+        max_retries = 2
+        for attempt in range(1, max_retries + 1):
+            result = await self.expo_push_service.send_event_alert(
+                tokens=all_tokens,
+                event_name=event.title,
+                importance=event.importance,
+                country=event.country,
+                currency=event.currency,
+                scheduled_time=event.time,
+            )
+            if result.success_count > 0 or attempt == max_retries:
+                break
+            logger.warning(
+                f"Notification send failed (attempt {attempt}/{max_retries}), retrying..."
+            )
+            await asyncio.sleep(1)
 
         logger.info(
             f"Sent notifications for '{event.title}': "

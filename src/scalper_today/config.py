@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     server_host: str = "127.0.0.1"
     server_port: int = 8000
 
+    notification_check_interval: int = Field(
+        default=60, description="Notification scheduler check interval in seconds"
+    )
+    notification_before_minutes: int = Field(
+        default=5, description="Minutes before event to send notification"
+    )
+
     @property
     def is_ai_configured(self) -> bool:
         return bool(self.openrouter_api_key and self.openrouter_api_key != "your_api_key_here")

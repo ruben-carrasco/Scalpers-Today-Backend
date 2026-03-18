@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -42,6 +43,9 @@ class InvestingComScraper(IEventScraper):
             logger.error(f"Error fetching events: {e}")
             return []
 
+    MAX_RETRIES = 3
+    RETRY_BASE_DELAY = 1  # seconds
+
     async def _fetch_calendar_html(self) -> str:
         current_date = datetime.now(self.TZ_MADRID).strftime("%Y-%m-%d")
 
@@ -53,25 +57,49 @@ class InvestingComScraper(IEventScraper):
             "limit_from": "0",
         }
 
-        try:
-            response = await self._client.post(
-                self._settings.investing_api_url,
-                data=payload,
-                headers=self.BROWSER_HEADERS,
-            )
+        last_exception = None
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                response = await self._client.post(
+                    self._settings.investing_api_url,
+                    data=payload,
+                    headers=self.BROWSER_HEADERS,
+                )
 
-            if response.status_code == 200:
-                return response.json().get("data", "")
+                if response.status_code == 200:
+                    return response.json().get("data", "")
 
-            logger.error(f"Investing.com returned status {response.status_code}")
-            return ""
+                logger.warning(
+                    f"Investing.com returned status {response.status_code} "
+                    f"(attempt {attempt}/{self.MAX_RETRIES})"
+                )
 
-        except httpx.TimeoutException:
-            logger.error("Timeout fetching from Investing.com")
-            return ""
-        except Exception as e:
-            logger.error(f"HTTP error: {e}")
-            return ""
+                # Don't retry on client errors (4xx) except 429
+                if 400 <= response.status_code < 500 and response.status_code != 429:
+                    return ""
+
+            except httpx.TimeoutException as e:
+                logger.warning(
+                    f"Timeout fetching from Investing.com "
+                    f"(attempt {attempt}/{self.MAX_RETRIES})"
+                )
+                last_exception = e
+            except Exception as e:
+                logger.warning(
+                    f"HTTP error: {e} (attempt {attempt}/{self.MAX_RETRIES})"
+                )
+                last_exception = e
+
+            if attempt < self.MAX_RETRIES:
+                delay = self.RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                logger.info(f"Retrying in {delay}s...")
+                await asyncio.sleep(delay)
+
+        logger.error(
+            f"Failed to fetch from Investing.com after {self.MAX_RETRIES} attempts"
+            + (f": {last_exception}" if last_exception else "")
+        )
+        return ""
 
     def _parse_events(self, html: str) -> List[EconomicEvent]:
         events: List[EconomicEvent] = []

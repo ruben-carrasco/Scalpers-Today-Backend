@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Dict, List
@@ -12,6 +13,7 @@ from scalper_today.domain import (
     EconomicEvent,
     IAIAnalyzer,
 )
+from scalper_today.domain.exceptions import ExternalServiceError
 from scalper_today.domain.usecases import CacheKeyGenerator, EventFilter
 
 logger = logging.getLogger(__name__)
@@ -45,24 +47,28 @@ class OpenRouterAnalyzer(IAIAnalyzer):
         if not events:
             return {}
 
-        results: Dict[str, AIAnalysis] = {}
-        total_batches = (len(events) + self.BATCH_SIZE - 1) // self.BATCH_SIZE
+        try:
+            results: Dict[str, AIAnalysis] = {}
+            total_batches = (len(events) + self.BATCH_SIZE - 1) // self.BATCH_SIZE
 
-        logger.info(f"Starting quick analysis of {len(events)} events in {total_batches} batches")
+            logger.info(f"Starting quick analysis of {len(events)} events in {total_batches} batches")
 
-        for batch_idx in range(0, len(events), self.BATCH_SIZE):
-            batch = events[batch_idx : batch_idx + self.BATCH_SIZE]
-            batch_num = (batch_idx // self.BATCH_SIZE) + 1
+            for batch_idx in range(0, len(events), self.BATCH_SIZE):
+                batch = events[batch_idx : batch_idx + self.BATCH_SIZE]
+                batch_num = (batch_idx // self.BATCH_SIZE) + 1
 
-            logger.info(
-                f"Processing quick analysis batch {batch_num}/{total_batches} ({len(batch)} events)"
-            )
+                logger.info(
+                    f"Processing quick analysis batch {batch_num}/{total_batches} ({len(batch)} events)"
+                )
 
-            batch_results = await self._analyze_quick_batch(batch)
-            results.update(batch_results)
+                batch_results = await self._analyze_quick_batch(batch)
+                results.update(batch_results)
 
-        logger.info(f"Quick analysis complete: {len(results)}/{len(events)} events analyzed")
-        return results
+            logger.info(f"Quick analysis complete: {len(results)}/{len(events)} events analyzed")
+            return results
+        except ExternalServiceError as e:
+            logger.warning(f"AI analysis unavailable, returning empty results: {e.message}")
+            return {}
 
     async def analyze_events_deep(self, events: List[EconomicEvent]) -> Dict[str, AIAnalysis]:
         if not self._is_configured:
@@ -75,28 +81,32 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             logger.info("No high-impact events for deep analysis")
             return {}
 
-        results: Dict[str, AIAnalysis] = {}
-        total_batches = (len(high_impact) + self.DEEP_BATCH_SIZE - 1) // self.DEEP_BATCH_SIZE
-
-        logger.info(
-            f"Starting deep analysis of {len(high_impact)} high-impact events in {total_batches} batches"
-        )
-
-        for batch_idx in range(0, len(high_impact), self.DEEP_BATCH_SIZE):
-            batch = high_impact[batch_idx : batch_idx + self.DEEP_BATCH_SIZE]
-            batch_num = (batch_idx // self.DEEP_BATCH_SIZE) + 1
+        try:
+            results: Dict[str, AIAnalysis] = {}
+            total_batches = (len(high_impact) + self.DEEP_BATCH_SIZE - 1) // self.DEEP_BATCH_SIZE
 
             logger.info(
-                f"Processing deep analysis batch {batch_num}/{total_batches} ({len(batch)} events)"
+                f"Starting deep analysis of {len(high_impact)} high-impact events in {total_batches} batches"
             )
 
-            batch_results = await self._analyze_deep_batch(batch)
-            results.update(batch_results)
+            for batch_idx in range(0, len(high_impact), self.DEEP_BATCH_SIZE):
+                batch = high_impact[batch_idx : batch_idx + self.DEEP_BATCH_SIZE]
+                batch_num = (batch_idx // self.DEEP_BATCH_SIZE) + 1
 
-        logger.info(
-            f"Deep analysis complete: {len(results)}/{len(high_impact)} high-impact events analyzed"
-        )
-        return results
+                logger.info(
+                    f"Processing deep analysis batch {batch_num}/{total_batches} ({len(batch)} events)"
+                )
+
+                batch_results = await self._analyze_deep_batch(batch)
+                results.update(batch_results)
+
+            logger.info(
+                f"Deep analysis complete: {len(results)}/{len(high_impact)} high-impact events analyzed"
+            )
+            return results
+        except ExternalServiceError as e:
+            logger.warning(f"AI deep analysis unavailable, returning empty results: {e.message}")
+            return {}
 
     async def _analyze_quick_batch(self, batch: List[EconomicEvent]) -> Dict[str, AIAnalysis]:
         prompt_data = [
@@ -211,17 +221,20 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             for e in briefing_events
         ]
 
-        prompt = self._build_briefing_prompt(summary_data)
-        response = await self._call_api(prompt, temperature=0.2, max_tokens=2000)
-
-        if not response:
-            return DailyBriefing.error("Error obteniendo respuesta de IA")
-
         try:
+            prompt = self._build_briefing_prompt(summary_data)
+            response = await self._call_api(prompt, temperature=0.2, max_tokens=2000)
+
+            if not response:
+                return DailyBriefing.error("Error obteniendo respuesta de IA")
+
             briefing = self._dict_to_briefing(response)
             briefing.statistics.total_events_today = len(events)
             briefing.statistics.high_impact_count = len(high_impact)
             return briefing
+        except ExternalServiceError as e:
+            logger.warning(f"Briefing generation unavailable: {e.message}")
+            return DailyBriefing.error("Servicio de IA temporalmente no disponible")
         except Exception as e:
             logger.error(f"Failed to parse briefing response: {e}")
             return DailyBriefing.error("Error parseando respuesta de IA")
@@ -251,38 +264,70 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             statistics=stats,
         )
 
+    MAX_RETRIES = 2
+    RETRY_BASE_DELAY = 1  # seconds
+
     async def _call_api(
         self, prompt: str, temperature: float = 0.1, max_tokens: int = 4000
     ) -> dict | None:
-        try:
-            response = await self._client.post(
-                self._settings.openrouter_url,
-                json={
-                    "model": self._settings.openrouter_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
-                headers=self._headers,
-                timeout=self._settings.http_timeout_seconds,
-            )
+        last_exception = None
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                response = await self._client.post(
+                    self._settings.openrouter_url,
+                    json={
+                        "model": self._settings.openrouter_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    },
+                    headers=self._headers,
+                    timeout=self._settings.http_timeout_seconds,
+                )
 
-            if response.status_code != 200:
-                logger.error(f"OpenRouter error {response.status_code}: {response.text[:200]}")
-                return None
+                if response.status_code == 200:
+                    content = response.json()["choices"][0]["message"]["content"]
+                    return self._parse_json(content)
 
-            content = response.json()["choices"][0]["message"]["content"]
-            return self._parse_json(content)
+                # Don't retry client errors (4xx) except 429
+                if 400 <= response.status_code < 500 and response.status_code != 429:
+                    logger.error(
+                        f"OpenRouter client error {response.status_code}: {response.text[:200]}"
+                    )
+                    raise ExternalServiceError(
+                        "OpenRouter",
+                        f"API returned {response.status_code}",
+                    )
 
-        except httpx.TimeoutException:
-            logger.error("OpenRouter API timeout")
-            return None
-        except KeyError as e:
-            logger.error(f"Unexpected API response structure: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"API call failed: {e}")
-            return None
+                logger.warning(
+                    f"OpenRouter error {response.status_code} "
+                    f"(attempt {attempt}/{self.MAX_RETRIES})"
+                )
+
+            except ExternalServiceError:
+                raise
+            except httpx.TimeoutException as e:
+                logger.warning(
+                    f"OpenRouter API timeout (attempt {attempt}/{self.MAX_RETRIES})"
+                )
+                last_exception = e
+            except KeyError as e:
+                logger.error(f"Unexpected API response structure: {e}")
+                raise ExternalServiceError("OpenRouter", f"Unexpected response: {e}")
+            except Exception as e:
+                logger.warning(
+                    f"API call failed: {e} (attempt {attempt}/{self.MAX_RETRIES})"
+                )
+                last_exception = e
+
+            if attempt < self.MAX_RETRIES:
+                delay = self.RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                await asyncio.sleep(delay)
+
+        error_msg = f"OpenRouter failed after {self.MAX_RETRIES} attempts"
+        if last_exception:
+            error_msg += f": {last_exception}"
+        raise ExternalServiceError("OpenRouter", error_msg)
 
     @staticmethod
     def _parse_json(content: str) -> dict | None:
