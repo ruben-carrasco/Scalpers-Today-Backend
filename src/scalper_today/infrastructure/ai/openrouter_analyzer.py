@@ -179,6 +179,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
                         technical_levels=data.get("niveles_tecnicos", ""),
                         trading_strategies=data.get("estrategias_trading", ""),
                         impacted_assets=data.get("activos_impactados", ""),
+                        is_deep_analysis=True,
                     )
             except (ValueError, KeyError) as e:
                 logger.debug(f"Failed to parse deep analysis result {id_str}: {e}")
