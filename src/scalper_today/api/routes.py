@@ -5,11 +5,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import text
 
 from scalper_today.api.dependencies import Container, get_container
-from scalper_today.domain.entities import DailyBriefing, EconomicEvent
+from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.usecases import (
     EventFilter,
     EventFilterCriteria,
-    GetHomeSummaryUseCase,
     GetUpcomingEventsUseCase,
     GetAvailableCountriesUseCase,
 )
@@ -83,7 +82,7 @@ async def refresh_macro_events(
 @router.get(
     "/brief", tags=["Briefing"], summary="Get Daily Briefing", response_model=DailyBriefingResponse
 )
-async def get_daily_briefing(c: ContainerDep) -> DailyBriefing:
+async def get_daily_briefing(c: ContainerDep) -> DailyBriefingResponse:
     return await c.get_daily_briefing()
 
 
@@ -151,18 +150,8 @@ async def readiness_probe(c: ContainerDep) -> ReadinessResponse:
     response_model=HomeSummaryResponse,
 )
 async def get_home_summary(c: ContainerDep):
-    events = await c.get_macro_events()
+    summary = await c.get_home_summary()
 
-    try:
-        briefing = await c.get_daily_briefing()
-    except Exception as e:
-        logger.error(f"/home/summary briefing error (using fallback): {e}")
-        briefing = DailyBriefing.error("Briefing temporalmente no disponible")
-
-    use_case = GetHomeSummaryUseCase()
-    summary = use_case.execute(events, briefing)
-
-    # Manual mapping to the response model to handle the nested structure
     return HomeSummaryResponse(
         welcome=WelcomeSchema(
             greeting=summary.greeting, date=summary.date_formatted, time=summary.time_formatted
@@ -190,9 +179,11 @@ async def get_home_summary(c: ContainerDep):
 async def get_filtered_events(
     c: ContainerDep,
     importance: Annotated[Optional[int], Query(ge=1, le=3)] = None,
-    country: Annotated[Optional[str], Query()] = None,
+    country: Annotated[Optional[str], Query(max_length=100)] = None,
     has_data: Annotated[Optional[bool], Query()] = None,
-    search: Annotated[Optional[str], Query()] = None,
+    search: Annotated[Optional[str], Query(min_length=1, max_length=200)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> FilteredEventsResponse:
     events = await c.get_macro_events()
 
@@ -200,8 +191,9 @@ async def get_filtered_events(
         importance=importance, country=country, has_data=has_data, search=search
     )
     filtered = EventFilter.apply_criteria(events, criteria)
+    paginated = filtered[offset : offset + limit]
 
-    return FilteredEventsResponse(total=len(filtered), filters_applied=criteria, events=filtered)
+    return FilteredEventsResponse(total=len(filtered), filters_applied=criteria, events=paginated)
 
 
 @router.get(

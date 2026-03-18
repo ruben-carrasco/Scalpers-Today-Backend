@@ -16,8 +16,8 @@ from scalper_today.domain.interfaces import (
     IAlertRepository,
     IDeviceTokenRepository,
 )
-from scalper_today.domain.entities import EconomicEvent, DailyBriefing
-from scalper_today.domain.usecases import GetDailyBriefingUseCase, GetMacroEventsUseCase
+from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
+from scalper_today.domain.usecases import GetDailyBriefingUseCase, GetHomeSummaryUseCase, GetMacroEventsUseCase
 from scalper_today.config import Settings, get_settings
 from scalper_today.infrastructure import InvestingComScraper, OpenRouterAnalyzer
 from scalper_today.infrastructure.database import DatabaseManager, EventRepository, get_db_url
@@ -94,6 +94,18 @@ class Container:
             )
             return await use_case.execute()
 
+    async def get_home_summary(self) -> HomeSummary:
+        events = await self.get_macro_events()
+
+        try:
+            briefing = await self.get_daily_briefing()
+        except Exception as e:
+            logger.error(f"Home summary briefing error (using fallback): {e}")
+            briefing = DailyBriefing.error("Briefing temporalmente no disponible")
+
+        use_case = GetHomeSummaryUseCase()
+        return use_case.execute(events, briefing)
+
     @classmethod
     def get_instance(cls) -> "Container":
         if cls._instance is None:
@@ -147,8 +159,8 @@ async def init_container() -> AsyncIterator[Container]:
     notification_scheduler = NotificationScheduler(
         expo_push_service=expo_push_service,
         database_manager=db_manager,
-        check_interval_seconds=60,  # Check every minute
-        notify_before_minutes=5,  # Notify 5 minutes before event
+        check_interval_seconds=settings.notification_check_interval,
+        notify_before_minutes=settings.notification_before_minutes,
     )
 
     container = Container(
