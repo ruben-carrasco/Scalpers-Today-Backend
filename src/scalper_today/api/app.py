@@ -128,9 +128,9 @@ def create_app() -> FastAPI:
 
     cors_origins = settings.cors_origins_list
 
-    if settings.app_env == "development" and not cors_origins:
-        cors_origins = ["*"]
-        logger.warning("CORS: Allowing all origins in development mode")
+    if not cors_origins:
+        cors_origins = ["http://localhost:3000", "http://localhost:8080", "http://localhost:19006"]
+        logger.info(f"CORS: Using default origins for {settings.app_env}")
 
     app.add_middleware(
         CORSMiddleware,

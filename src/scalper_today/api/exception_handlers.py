@@ -47,7 +47,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         if isinstance(exc, HTTPException):
             raise exc
 
-        logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+        logger.error(f"Unhandled exception: {type(exc).__name__}: {str(exc)}")
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
