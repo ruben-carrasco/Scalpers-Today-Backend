@@ -12,7 +12,7 @@ from scalper_today.domain.usecases import (
     GetUpcomingEventsUseCase,
     GetAvailableCountriesUseCase,
 )
-from .schemas import (
+from ..schemas import (
     EventResponse,
     HomeSummaryResponse,
     DailyBriefingResponse,

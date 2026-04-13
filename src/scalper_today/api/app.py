@@ -8,7 +8,7 @@ from fastapi.openapi.utils import get_openapi
 
 from scalper_today.api.dependencies import init_container
 from scalper_today.config import get_settings
-from .routes import router
+from .routes.system import router
 from .exception_handlers import register_exception_handlers
 
 logger = logging.getLogger(__name__)
@@ -142,10 +142,10 @@ def create_app() -> FastAPI:
 
     app.include_router(router, prefix="/api/v1")
 
-    from . import auth_routes, alert_routes
+    from .routes import auth, alerts
 
-    app.include_router(auth_routes.router, prefix="/api/v1")
-    app.include_router(alert_routes.router, prefix="/api/v1")
+    app.include_router(auth.router, prefix="/api/v1")
+    app.include_router(alerts.router, prefix="/api/v1")
 
     register_exception_handlers(app)
 

@@ -74,7 +74,7 @@ def test_register_device_token(client, auth_header):
         "device_type": "ios",
         "device_name": "iPhone 15 Pro",
     }
-    # Path is /api/v1/alerts/device-token based on alert_routes.py being included under v1 prefix
+    # Path is /api/v1/alerts/device-token based on alerts router being included under v1 prefix
     response = client.post("/api/v1/alerts/device-token", json=payload, headers=auth_header)
     assert response.status_code == 201
     assert response.json()["is_active"] is True

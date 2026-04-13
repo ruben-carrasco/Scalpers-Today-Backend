@@ -341,9 +341,10 @@ El proyecto sigue una **arquitectura limpia (Clean Architecture)** con las sigui
 src/scalper_today/
 ├── api/                    # Capa de Presentación (Controllers)
 │   ├── app.py             # Factory de aplicación
-│   ├── routes.py          # Endpoints de eventos y sistema
-│   ├── auth_routes.py     # Endpoints de autenticación
-│   ├── alert_routes.py    # Endpoints de alertas
+│   ├── routes/            # Endpoints organizados por dominio
+│   │   ├── system.py      # Endpoints de eventos y sistema
+│   │   ├── auth.py        # Endpoints de autenticación
+│   │   └── alerts.py      # Endpoints de alertas
 │   ├── exception_handlers.py # Manejo global de errores
 │   ├── schemas/           # Esquemas Pydantic agrupados por dominio
 │   │   ├── auth/, events/, alerts/, home/, shared/
@@ -922,7 +923,7 @@ La aplicación utiliza SQLite con las siguientes tablas:
 
 El sistema utiliza **Alembic** para la gestión de migraciones de la base de datos, lo que permite evolucionar el esquema de SQLite de forma segura.
 
-1. **Gestión de Versiones**: Se utiliza `alembic upgrade head` en el arranque del servidor (Azure `startup.sh`) para asegurar que todas las tablas existan y estén actualizadas.
+1. **Gestión de Versiones**: Se utiliza `alembic upgrade head` en el arranque del servidor (Azure `scripts/startup.sh`, invocado desde `startup.sh`) para asegurar que todas las tablas existan y estén actualizadas.
 
 2. **Carga inicial**: No requiere carga manual. El archivo SQLite se crea automáticamente si no existe.
 
