@@ -5,7 +5,7 @@ from typing import List
 import pytz
 
 from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.interfaces import IAIAnalyzer, IEventScraper, IEventRepository
+from scalper_today.domain.interfaces import IAIAnalyzer, IEventProvider, IEventRepository
 from .cache_key_generator import CacheKeyGenerator
 
 logger = logging.getLogger(__name__)
@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 class GetMacroEventsUseCase:
     def __init__(
         self,
-        scraper: IEventScraper,
+        provider: IEventProvider,
         repository: IEventRepository,
         analyzer: IAIAnalyzer,
         target_date: date | None = None,
     ):
-        self._scraper = scraper
+        self._provider = provider
         self._repository = repository
         self._analyzer = analyzer
         self._target_date = target_date or datetime.now(pytz.timezone("Europe/Madrid")).date()
@@ -37,15 +37,15 @@ class GetMacroEventsUseCase:
 
             cached_events = await self._repository.get_events_by_date(self._target_date)
             if cached_events:
-                logger.info("Cache expired, re-scraping to check for updated data...")
+                logger.info("Cache expired, re-fetching provider data to check for updates...")
             else:
                 logger.info("No events in database for today")
 
-        logger.info("Scraping fresh events from source...")
-        scraped_events = await self._scraper.fetch_today_events()
+        logger.info("Fetching fresh events from provider...")
+        scraped_events = await self._provider.fetch_today_events()
 
         if not scraped_events:
-            logger.warning("No events fetched from scraper")
+            logger.warning("No events fetched from provider")
             return await self._repository.get_events_by_date(self._target_date)
 
         logger.info(f"Scraped {len(scraped_events)} events")

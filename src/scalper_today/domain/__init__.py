@@ -20,7 +20,7 @@ from .entities import (
 
 from .interfaces import (
     IAIAnalyzer,
-    IEventScraper,
+    IEventProvider,
     IUserRepository,
     IAlertRepository,
     IDeviceTokenRepository,
@@ -65,7 +65,7 @@ __all__ = [
     "Language",
     "Currency",
     "Timezone",
-    "IEventScraper",
+    "IEventProvider",
     "IAIAnalyzer",
     "IUserRepository",
     "IAlertRepository",

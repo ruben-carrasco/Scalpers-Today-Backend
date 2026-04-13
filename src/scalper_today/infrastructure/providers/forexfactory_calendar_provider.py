@@ -9,12 +9,12 @@ import pytz
 
 from scalper_today.config import Settings
 from scalper_today.domain.entities import EconomicEvent, Importance
-from scalper_today.domain.interfaces import IEventScraper
+from scalper_today.domain.interfaces import IEventProvider
 
 logger = logging.getLogger(__name__)
 
 
-class ForexFactoryCalendarProvider(IEventScraper):
+class ForexFactoryCalendarProvider(IEventProvider):
     TZ_MADRID = pytz.timezone("Europe/Madrid")
     MAX_RETRIES = 2
     RETRY_BASE_DELAY_SECONDS = 1

@@ -24,18 +24,7 @@ class Settings(BaseSettings):
     openrouter_model: str = "google/gemini-2.5-flash"
 
     http_timeout_seconds: float = 90.0
-
-    fmp_api_key: str = Field(default="", description="Financial Modeling Prep API key")
-    fmp_calendar_url: str = "https://financialmodelingprep.com/stable/economic-calendar"
-    tradingeconomics_api_key: str = Field(
-        default="guest:guest", description="TradingEconomics API key format user:password"
-    )
-    tradingeconomics_calendar_url: str = "https://api.tradingeconomics.com/calendar/country/all"
     forexfactory_calendar_url: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-
-    investing_api_url: str = (
-        "https://www.investing.com/economic-calendar/Service/getCalendarFilteredData"
-    )
 
     database_path: str = Field(
         default="data/scalper_today.db", description="Path to SQLite database"

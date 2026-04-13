@@ -11,13 +11,17 @@ from scalper_today.domain.interfaces import (
     IAIAnalyzer,
     IAuthService,
     IEventRepository,
-    IEventScraper,
+    IEventProvider,
     IUserRepository,
     IAlertRepository,
     IDeviceTokenRepository,
 )
 from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
-from scalper_today.domain.usecases import GetDailyBriefingUseCase, GetHomeSummaryUseCase, GetMacroEventsUseCase
+from scalper_today.domain.usecases import (
+    GetDailyBriefingUseCase,
+    GetHomeSummaryUseCase,
+    GetMacroEventsUseCase,
+)
 from scalper_today.config import Settings, get_settings
 from scalper_today.infrastructure import ForexFactoryCalendarProvider, OpenRouterAnalyzer
 from scalper_today.infrastructure.database import (
@@ -44,7 +48,7 @@ class Container:
         settings: Settings,
         http_client: httpx.AsyncClient,
         database_manager: DatabaseManager,
-        scraper: IEventScraper,
+        provider: IEventProvider,
         analyzer: IAIAnalyzer,
         jwt_service: IAuthService,
         expo_push_service: Optional[ExpoPushService] = None,
@@ -53,7 +57,7 @@ class Container:
         self.settings = settings
         self.http_client = http_client
         self.database_manager = database_manager
-        self.scraper: IEventScraper = scraper
+        self.provider: IEventProvider = provider
         self.analyzer: IAIAnalyzer = analyzer
         self._jwt_service: IAuthService = jwt_service
         self._expo_push_service = expo_push_service
@@ -85,7 +89,7 @@ class Container:
         async with self.database_manager.session() as session:
             repository = self.get_event_repository(session)
             use_case = GetMacroEventsUseCase(
-                self.scraper, repository, self.analyzer, target_date=madrid_date
+                self.provider, repository, self.analyzer, target_date=madrid_date
             )
             return await use_case.execute(force_refresh=force_refresh)
 
@@ -94,7 +98,7 @@ class Container:
         async with self.database_manager.session() as session:
             repository = self.get_event_repository(session)
             use_case = GetDailyBriefingUseCase(
-                self.scraper, repository, self.analyzer, target_date=madrid_date
+                self.provider, repository, self.analyzer, target_date=madrid_date
             )
             return await use_case.execute()
 
@@ -143,7 +147,7 @@ async def init_container() -> AsyncIterator[Container]:
         http2=True,
     )
 
-    scraper = ForexFactoryCalendarProvider(settings, http_client)
+    provider = ForexFactoryCalendarProvider(settings, http_client)
     analyzer = OpenRouterAnalyzer(settings, http_client)
 
     # SECURITY: Fail fast if no secret key in production
@@ -172,7 +176,7 @@ async def init_container() -> AsyncIterator[Container]:
         settings=settings,
         http_client=http_client,
         database_manager=db_manager,
-        scraper=scraper,
+        provider=provider,
         analyzer=analyzer,
         jwt_service=jwt_service,
         expo_push_service=expo_push_service,

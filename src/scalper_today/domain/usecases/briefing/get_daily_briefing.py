@@ -4,7 +4,7 @@ from datetime import date, datetime
 import pytz
 
 from scalper_today.domain.entities import DailyBriefing
-from scalper_today.domain.interfaces import IAIAnalyzer, IEventScraper, IEventRepository
+from scalper_today.domain.interfaces import IAIAnalyzer, IEventProvider, IEventRepository
 
 logger = logging.getLogger(__name__)
 
@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 class GetDailyBriefingUseCase:
     def __init__(
         self,
-        scraper: IEventScraper,
+        provider: IEventProvider,
         repository: IEventRepository,
         analyzer: IAIAnalyzer,
         target_date: date | None = None,
     ):
-        self._scraper = scraper
+        self._provider = provider
         self._repository = repository
         self._analyzer = analyzer
         self._target_date = target_date or datetime.now(pytz.timezone("Europe/Madrid")).date()
@@ -38,12 +38,12 @@ class GetDailyBriefingUseCase:
 
                 logger.info("Briefing cache expired or empty, regenerating...")
 
-            # Mejoramos esto: usamos los eventos que ya tenemos en el repo en lugar de scrapear
+            # Usamos los eventos ya almacenados en el repo antes de consultar el provider
             events = await self._repository.get_events_by_date(self._target_date)
 
             if not events:
-                logger.info("No events in DB, fetching from scraper for briefing")
-                events = await self._scraper.fetch_today_events()
+                logger.info("No events in DB, fetching from provider for briefing")
+                events = await self._provider.fetch_today_events()
 
             logger.info(f"Using {len(events)} events for briefing generation")
 
