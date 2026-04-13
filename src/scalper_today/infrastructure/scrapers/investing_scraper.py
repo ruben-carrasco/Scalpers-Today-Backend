@@ -14,16 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 class InvestingComScraper(IEventScraper):
+    CALENDAR_URL = "https://www.investing.com/economic-calendar/"
+
     BROWSER_HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/120.0.0.0 Safari/537.36"
         ),
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": "https://www.investing.com/economic-calendar/",
+        "Accept-Language": "en-US,en;q=0.9,es;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    AJAX_HEADERS = {
+        **BROWSER_HEADERS,
         "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Cookie": "adBlockerNewUserDomains=1; cal-custom-range=0%200; cal-timezone-offset=0;",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Origin": "https://www.investing.com",
+        "Referer": CALENDAR_URL,
+        "X-Requested-With": "XMLHttpRequest",
     }
 
     TZ_MADRID = pytz.timezone("Europe/Madrid")
@@ -60,10 +69,12 @@ class InvestingComScraper(IEventScraper):
         last_exception = None
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
+                await self._bootstrap_session()
+
                 response = await self._client.post(
                     self._settings.investing_api_url,
                     data=payload,
-                    headers=self.BROWSER_HEADERS,
+                    headers=self.AJAX_HEADERS,
                 )
 
                 if response.status_code == 200:
@@ -74,8 +85,12 @@ class InvestingComScraper(IEventScraper):
                     f"(attempt {attempt}/{self.MAX_RETRIES})"
                 )
 
-                # Don't retry on client errors (4xx) except 429
-                if 400 <= response.status_code < 500 and response.status_code != 429:
+                # Don't retry on deterministic client errors (except 403/429).
+                # 403 can be transient with anti-bot checks; retry after bootstrapping.
+                if (
+                    400 <= response.status_code < 500
+                    and response.status_code not in (403, 429)
+                ):
                     return ""
 
             except httpx.TimeoutException as e:
@@ -100,6 +115,19 @@ class InvestingComScraper(IEventScraper):
             + (f": {last_exception}" if last_exception else "")
         )
         return ""
+
+    async def _bootstrap_session(self) -> None:
+        """Warm up session cookies/anti-bot checks before AJAX calendar call."""
+        try:
+            response = await self._client.get(
+                self.CALENDAR_URL,
+                headers=self.BROWSER_HEADERS,
+            )
+            status_code = getattr(response, "status_code", None)
+            if isinstance(status_code, int) and status_code >= 400:
+                logger.debug(f"Calendar bootstrap returned status {status_code}")
+        except Exception as e:
+            logger.debug(f"Calendar bootstrap request failed: {e}")
 
     def _parse_events(self, html: str) -> List[EconomicEvent]:
         events: List[EconomicEvent] = []
