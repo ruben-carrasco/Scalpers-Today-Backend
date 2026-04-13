@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from datetime import datetime
+import re
+from datetime import date, datetime
 from typing import List, Optional
 
 import httpx
 import pytz
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from scalper_today.config import Settings
 from scalper_today.domain import EconomicEvent, IEventScraper, Importance
@@ -16,18 +17,20 @@ logger = logging.getLogger(__name__)
 class InvestingComScraper(IEventScraper):
     CALENDAR_URL = "https://www.investing.com/economic-calendar/"
 
-    BROWSER_HEADERS = {
+    HTML_HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
+            "Chrome/125.0.0.0 Safari/537.36"
         ),
-        "Accept-Language": "en-US,en;q=0.9,es;q=0.8",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,es;q=0.8",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
     }
 
     AJAX_HEADERS = {
-        **BROWSER_HEADERS,
+        **HTML_HEADERS,
         "Accept": "application/json, text/javascript, */*; q=0.01",
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "Origin": "https://www.investing.com",
@@ -36,6 +39,8 @@ class InvestingComScraper(IEventScraper):
     }
 
     TZ_MADRID = pytz.timezone("Europe/Madrid")
+    MAX_RETRIES = 2
+    RETRY_BASE_DELAY_SECONDS = 1
 
     def __init__(self, settings: Settings, http_client: httpx.AsyncClient):
         self._settings = settings
@@ -43,30 +48,102 @@ class InvestingComScraper(IEventScraper):
 
     async def fetch_today_events(self) -> List[EconomicEvent]:
         try:
-            raw_html = await self._fetch_calendar_html()
-            if not raw_html:
-                logger.warning("No HTML received from Investing.com")
-                return []
-            return self._parse_events(raw_html)
+            html = await self.fetch_html()
+            events = self.parse_html(html)
+
+            if events:
+                logger.info("Parsed events from Investing calendar HTML", extra={"count": len(events)})
+                return events
+
+            logger.warning("Calendar HTML returned no parsable events; trying AJAX fallback")
+            return await self.fetch_ajax_fallback()
         except Exception as e:
-            logger.error(f"Error fetching events: {e}")
+            logger.error("Failed to fetch Investing events", extra={"error": str(e)})
             return []
 
-    MAX_RETRIES = 3
-    RETRY_BASE_DELAY = 1  # seconds
+    async def fetch_html(self) -> str:
+        """Primary strategy: fetch full calendar HTML page."""
+        last_exception: Optional[Exception] = None
+
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                response = await self._client.get(self.CALENDAR_URL, headers=self.HTML_HEADERS)
+                if response.status_code == 200:
+                    return response.text
+
+                logger.warning(
+                    "Investing calendar HTML fetch non-200",
+                    extra={"status_code": response.status_code, "attempt": attempt},
+                )
+
+                if response.status_code == 403:
+                    self._log_forbidden_debug("html", response)
+
+                if 400 <= response.status_code < 500 and response.status_code not in (403, 429):
+                    return ""
+            except httpx.TimeoutException as e:
+                last_exception = e
+                logger.warning("Timeout fetching Investing HTML", extra={"attempt": attempt})
+            except httpx.HTTPError as e:
+                last_exception = e
+                logger.warning("HTTP error fetching Investing HTML", extra={"attempt": attempt, "error": str(e)})
+            except Exception as e:
+                last_exception = e
+                logger.warning(
+                    "Unexpected error fetching Investing HTML",
+                    extra={"attempt": attempt, "error": str(e)},
+                )
+
+            if attempt < self.MAX_RETRIES:
+                await asyncio.sleep(self.RETRY_BASE_DELAY_SECONDS)
+
+        if last_exception:
+            logger.error("Failed to fetch Investing HTML", extra={"error": str(last_exception)})
+        return ""
+
+    def parse_html(self, html: str) -> List[EconomicEvent]:
+        """Parse event rows from full calendar HTML or AJAX snippet HTML."""
+        if not html:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        today = datetime.now(self.TZ_MADRID).date()
+
+        events: List[EconomicEvent] = []
+        rows = self._select_event_rows(soup)
+        logger.info("Processing Investing event rows", extra={"rows": len(rows)})
+
+        for row in rows:
+            try:
+                event = self._parse_single_row(row, today)
+                if event is not None:
+                    events.append(event)
+            except Exception as e:
+                logger.debug("Failed to parse Investing row", extra={"error": str(e)})
+
+        events.sort(key=lambda e: (e.time or "99:99", e.country or "ZZZ", -int(e.importance.value)))
+        return events
+
+    async def fetch_ajax_fallback(self) -> List[EconomicEvent]:
+        """Fallback strategy: bootstrap session, call AJAX endpoint, parse returned HTML."""
+        ajax_html = await self._fetch_calendar_html()
+        if not ajax_html:
+            return []
+        return self.parse_html(ajax_html)
 
     async def _fetch_calendar_html(self) -> str:
+        """Backward-compatible helper: fetch HTML snippet via AJAX endpoint."""
         current_date = datetime.now(self.TZ_MADRID).strftime("%Y-%m-%d")
-
         payload = {
             "dateFrom": current_date,
             "dateTo": current_date,
-            "timeZone": "60",  # Timezone code 60 = Madrid/UTC+1
+            "timeZone": "60",
             "currentTab": "today",
             "limit_from": "0",
         }
 
-        last_exception = None
+        last_exception: Optional[Exception] = None
+
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
                 await self._bootstrap_session()
@@ -78,125 +155,96 @@ class InvestingComScraper(IEventScraper):
                 )
 
                 if response.status_code == 200:
-                    return response.json().get("data", "")
+                    data = response.json()
+                    html = data.get("data", "") if isinstance(data, dict) else ""
+                    return html if isinstance(html, str) else ""
 
                 logger.warning(
-                    f"Investing.com returned status {response.status_code} "
-                    f"(attempt {attempt}/{self.MAX_RETRIES})"
+                    "Investing AJAX fallback non-200",
+                    extra={"status_code": response.status_code, "attempt": attempt},
                 )
 
-                # Don't retry on deterministic client errors (except 403/429).
-                # 403 can be transient with anti-bot checks; retry after bootstrapping.
-                if (
-                    400 <= response.status_code < 500
-                    and response.status_code not in (403, 429)
-                ):
+                if response.status_code == 403:
+                    self._log_forbidden_debug("ajax", response)
+
+                if 400 <= response.status_code < 500 and response.status_code not in (403, 429):
                     return ""
-
             except httpx.TimeoutException as e:
-                logger.warning(
-                    f"Timeout fetching from Investing.com "
-                    f"(attempt {attempt}/{self.MAX_RETRIES})"
-                )
                 last_exception = e
+                logger.warning("Timeout fetching Investing AJAX fallback", extra={"attempt": attempt})
+            except httpx.HTTPError as e:
+                last_exception = e
+                logger.warning(
+                    "HTTP error fetching Investing AJAX fallback",
+                    extra={"attempt": attempt, "error": str(e)},
+                )
             except Exception as e:
-                logger.warning(
-                    f"HTTP error: {e} (attempt {attempt}/{self.MAX_RETRIES})"
-                )
                 last_exception = e
+                logger.warning(
+                    "Unexpected error fetching Investing AJAX fallback",
+                    extra={"attempt": attempt, "error": str(e)},
+                )
 
             if attempt < self.MAX_RETRIES:
-                delay = self.RETRY_BASE_DELAY * (2 ** (attempt - 1))
-                logger.info(f"Retrying in {delay}s...")
-                await asyncio.sleep(delay)
+                await asyncio.sleep(self.RETRY_BASE_DELAY_SECONDS)
 
-        logger.error(
-            f"Failed to fetch from Investing.com after {self.MAX_RETRIES} attempts"
-            + (f": {last_exception}" if last_exception else "")
-        )
+        if last_exception:
+            logger.error("Failed AJAX fallback for Investing", extra={"error": str(last_exception)})
         return ""
 
     async def _bootstrap_session(self) -> None:
-        """Warm up session cookies/anti-bot checks before AJAX calendar call."""
+        """Warm up cookies/session using the calendar page before AJAX call."""
         try:
-            response = await self._client.get(
-                self.CALENDAR_URL,
-                headers=self.BROWSER_HEADERS,
-            )
-            status_code = getattr(response, "status_code", None)
-            if isinstance(status_code, int) and status_code >= 400:
-                logger.debug(f"Calendar bootstrap returned status {status_code}")
+            response = await self._client.get(self.CALENDAR_URL, headers=self.HTML_HEADERS)
+            if response.status_code >= 400:
+                logger.debug("Investing session bootstrap non-200", extra={"status_code": response.status_code})
         except Exception as e:
-            logger.debug(f"Calendar bootstrap request failed: {e}")
+            logger.debug("Investing session bootstrap failed", extra={"error": str(e)})
 
-    def _parse_events(self, html: str) -> List[EconomicEvent]:
-        events: List[EconomicEvent] = []
-        soup = BeautifulSoup(html, "html.parser")
-        rows = soup.select("tr.js-event-item")
+    def _select_event_rows(self, soup: BeautifulSoup) -> List[Tag]:
+        selectors = [
+            "tr.js-event-item",
+            "tr[data-event-datetime]",
+            "table#economicCalendarData tr",
+        ]
 
-        logger.info(f"Processing {len(rows)} event rows")
-        today = datetime.now(self.TZ_MADRID).date()
+        candidates: List[Tag] = []
+        for selector in selectors:
+            candidates.extend([row for row in soup.select(selector) if isinstance(row, Tag)])
 
-        for row in rows:
-            try:
-                event = self._parse_single_row(row, today)
-                if event:
-                    events.append(event)
-            except Exception as e:
-                logger.debug(f"Failed to parse row: {e}")
+        deduped: List[Tag] = []
+        seen: set[str] = set()
+        for row in candidates:
+            key = str(row.get("id") or row.get("data-event-datetime") or hash(str(row)[:120]))
+            if key in seen:
                 continue
+            seen.add(key)
 
-        # Sort by: 1) time, 2) country, 3) importance (high to low)
-        # Events at the same time are grouped by country, then by importance
-        def sort_key(e):
-            time_val = e.time if e.time else "99:99"
-            country_val = e.country if e.country else "ZZZ"
-            # Importance enum: LOW=1, MEDIUM=2, HIGH=3
-            # Negate to sort HIGH first: HIGH=-3, MEDIUM=-2, LOW=-1
-            importance_order = -e.importance.value
-            return (time_val, country_val, importance_order)
+            if row.select_one(".event") is None and row.select_one("td.event") is None:
+                continue
+            deduped.append(row)
 
-        events.sort(key=sort_key)
-        return events
+        return deduped
 
-    def _parse_single_row(self, row, today) -> Optional[EconomicEvent]:
-        # Extract datetime
+    def _parse_single_row(self, row: Tag, today: date) -> Optional[EconomicEvent]:
         event_dt = self._extract_datetime(row, today)
-        if not event_dt:
+        if event_dt is None:
             return None
 
-        # All events are for today (we trust the API's date filter)
-
-        # Event name
-        event_cell = row.select_one(".event")
-        if not event_cell:
-            return None
-        event_name = event_cell.get_text(strip=True)
+        event_name = self._extract_event_name(row)
         if not event_name:
             return None
 
-        # URL
-        link = row.select_one(".event a")
-        url = ""
-        if link and link.get("href", "").startswith("/"):
-            url = f"https://www.investing.com{link.get('href')}"
-
-        # Importance (stars)
+        url = self._extract_url(row)
         importance = self._extract_importance(row)
-
-        # Country & Currency
         country, currency = self._extract_location(row)
 
-        # Values
         actual = self._safe_text(row.select_one(".act"))
         forecast = self._safe_text(row.select_one(".fore"))
         previous = self._safe_text(row.select_one(".prev"))
-
-        # Surprise
         surprise = self._extract_surprise(row)
 
-        # Generate a unique ID
-        row_id = row.get("id", "") or f"{event_dt.strftime('%H%M')}-{event_name[:10]}"
+        row_id = self._build_row_id(row, event_dt, event_name, country, currency)
 
         return EconomicEvent(
             id=row_id,
@@ -213,66 +261,164 @@ class InvestingComScraper(IEventScraper):
             _timestamp=event_dt,
         )
 
-    def _extract_datetime(self, row, today) -> Optional[datetime]:
-        # Use time cell - already in Madrid timezone (we requested timezone=88)
-        time_cell = row.select_one(".time")
-        if time_cell:
-            time_text = time_cell.get_text(strip=True)
-            if ":" in time_text:
-                try:
-                    t = datetime.strptime(time_text, "%H:%M")
-                    return self.TZ_MADRID.localize(
-                        t.replace(year=today.year, month=today.month, day=today.day)
-                    )
-                except ValueError:
-                    pass
+    def _extract_datetime(self, row: Tag, today: date) -> Optional[datetime]:
+        attr_value = row.get("data-event-datetime")
+        if isinstance(attr_value, str) and attr_value.strip():
+            parsed = self._parse_datetime_value(attr_value.strip())
+            if parsed is not None:
+                return parsed.astimezone(self.TZ_MADRID)
+
+        time_text = self._extract_time_text(row)
+        if not time_text:
+            return None
+
+        match = re.search(r"(\d{1,2}:\d{2})", time_text)
+        if not match:
+            return None
+
+        try:
+            parsed_time = datetime.strptime(match.group(1), "%H:%M")
+            naive_dt = datetime(
+                year=today.year,
+                month=today.month,
+                day=today.day,
+                hour=parsed_time.hour,
+                minute=parsed_time.minute,
+            )
+            return self.TZ_MADRID.localize(naive_dt)
+        except ValueError:
+            return None
+
+    def _parse_datetime_value(self, value: str) -> Optional[datetime]:
+        if value.isdigit():
+            try:
+                timestamp = int(value)
+                if timestamp > 10_000_000_000:
+                    timestamp = timestamp // 1000
+                return datetime.fromtimestamp(timestamp, tz=self.TZ_MADRID)
+            except (ValueError, OSError):
+                return None
+
+        normalized = value.replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(normalized)
+            if parsed.tzinfo is None:
+                return self.TZ_MADRID.localize(parsed)
+            return parsed
+        except ValueError:
+            pass
+
+        for fmt in ("%Y/%m/%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                parsed = datetime.strptime(value, fmt)
+                return self.TZ_MADRID.localize(parsed)
+            except ValueError:
+                continue
 
         return None
 
-    def _extract_importance(self, row) -> Importance:
+    def _extract_time_text(self, row: Tag) -> str:
+        time_cell = row.select_one(".time") or row.select_one("td.first.left.time")
+        return self._safe_text(time_cell)
+
+    def _extract_event_name(self, row: Tag) -> str:
+        event_cell = row.select_one(".event") or row.select_one("td.left.event")
+        if event_cell is None:
+            return ""
+        return self._safe_text(event_cell)
+
+    def _extract_url(self, row: Tag) -> str:
+        link = row.select_one(".event a") or row.select_one("td.left.event a")
+        href = (link.get("href", "") if link else "").strip()
+        if href.startswith("http"):
+            return href
+        if href.startswith("/"):
+            return f"https://www.investing.com{href}"
+        return ""
+
+    def _extract_importance(self, row: Tag) -> Importance:
         cell = row.select_one(".sentiment")
-        if not cell:
+        if cell is None:
             return Importance.LOW
 
-        # Count filled bull icons (updated class names)
-        stars = len(cell.select(".grayFullBullishIcon"))
-
-        # Fallback to old class names (backwards compatibility)
-        if stars == 0:
-            stars = len(cell.select(".grayFullBullIcon")) or len(cell.select(".grayFull"))
+        stars = len(
+            cell.select(
+                ".grayFullBullishIcon, .grayFullBullIcon, .grayFull, .bullishIcon, i[class*='Bull']"
+            )
+        )
 
         if stars >= 3:
             return Importance.HIGH
-        elif stars == 2:
+        if stars == 2:
             return Importance.MEDIUM
         return Importance.LOW
 
-    def _extract_location(self, row) -> tuple[str, str]:
+    def _extract_location(self, row: Tag) -> tuple[str, str]:
         flag = row.select_one(".flagCur")
-        if not flag:
+        if flag is None:
             return "Global", ""
 
-        currency = flag.get_text(strip=True).replace("&nbsp;", "")
         country = "Global"
-
         title_span = flag.select_one("span[title]")
-        if title_span:
-            country = title_span.get("title", "Global")
+        if title_span is not None:
+            country = str(title_span.get("title", "Global")).strip() or "Global"
 
-        return country, currency
+        raw_text = self._safe_text(flag)
+        currency_match = re.findall(r"\b[A-Z]{3}\b", raw_text)
+        currency = currency_match[-1] if currency_match else raw_text
 
-    def _extract_surprise(self, row) -> str:
+        return country, currency.strip()
+
+    def _extract_surprise(self, row: Tag) -> str:
         act = row.select_one(".act")
-        if not act:
+        if act is None:
             return "neutral"
 
         classes = act.get("class", [])
         if "greenFont" in classes:
             return "positive"
-        elif "redFont" in classes:
+        if "redFont" in classes:
             return "negative"
         return "neutral"
 
+    def _build_row_id(
+        self,
+        row: Tag,
+        event_dt: datetime,
+        event_name: str,
+        country: str,
+        currency: str,
+    ) -> str:
+        row_id = str(row.get("id", "")).strip()
+        if row_id:
+            return row_id
+
+        slug = re.sub(r"\W+", "-", event_name.lower()).strip("-")[:32]
+        location = re.sub(r"\W+", "-", f"{country}-{currency}".lower()).strip("-")[:24]
+        return f"{event_dt.strftime('%Y%m%d%H%M')}-{location}-{slug}"
+
+    def _log_forbidden_debug(self, source: str, response: httpx.Response) -> None:
+        body_preview = (response.text or "")[:500]
+        logger.warning(
+            "Investing returned 403",
+            extra={"source": source, "status_code": response.status_code},
+        )
+        logger.debug(
+            "Investing 403 details",
+            extra={
+                "source": source,
+                "headers": dict(response.headers),
+                "body_preview": body_preview,
+            },
+        )
+
     @staticmethod
-    def _safe_text(el) -> str:
-        return el.get_text(strip=True) if el else ""
+    def _safe_text(el: Optional[Tag]) -> str:
+        if el is None:
+            return ""
+        text = el.get_text(" ", strip=True)
+        return re.sub(r"\s+", " ", text).strip()
+
+    # Backward-compatible alias
+    def _parse_events(self, html: str) -> List[EconomicEvent]:
+        return self.parse_html(html)

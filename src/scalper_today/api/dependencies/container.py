@@ -140,6 +140,7 @@ async def init_container() -> AsyncIterator[Container]:
     http_client = httpx.AsyncClient(
         timeout=httpx.Timeout(settings.http_timeout_seconds),
         follow_redirects=True,
+        http2=True,
     )
 
     scraper = InvestingComScraper(settings, http_client)

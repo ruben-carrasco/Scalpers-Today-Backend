@@ -41,7 +41,6 @@ class TestScraperRetry:
         client = AsyncMock()
         client.post.side_effect = [
             httpx.TimeoutException("timeout"),
-            httpx.TimeoutException("timeout"),
             make_response(200, json_data={"data": "<html></html>"}),
         ]
         scraper = InvestingComScraper(settings, client)
@@ -50,7 +49,7 @@ class TestScraperRetry:
             result = await scraper._fetch_calendar_html()
 
         assert result == "<html></html>"
-        assert client.post.call_count == 3
+        assert client.post.call_count == 2
 
     @pytest.mark.asyncio
     async def test_does_not_retry_on_client_error(self, settings):
@@ -89,7 +88,7 @@ class TestScraperRetry:
             result = await scraper._fetch_calendar_html()
 
         assert result == ""
-        assert client.post.call_count == 3
+        assert client.post.call_count == 2
 
     @pytest.mark.asyncio
     async def test_retries_on_429(self, settings):
