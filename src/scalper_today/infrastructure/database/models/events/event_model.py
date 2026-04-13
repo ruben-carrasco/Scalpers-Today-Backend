@@ -15,34 +15,38 @@ class EventModel(Base):
 
     # Event metadata
     date: Mapped[datetime] = mapped_column(DateTime, index=True)
-    hora: Mapped[str] = mapped_column(String(10))
+    time: Mapped[str] = mapped_column("hora", String(10))
 
     # Event details
-    noticia: Mapped[str] = mapped_column(String(500))
-    pais: Mapped[str] = mapped_column(String(50))
-    moneda: Mapped[str] = mapped_column(String(10))
-    importancia: Mapped[int] = mapped_column(Integer, index=True)
+    title: Mapped[str] = mapped_column("noticia", String(500))
+    country: Mapped[str] = mapped_column("pais", String(50))
+    currency: Mapped[str] = mapped_column("moneda", String(10))
+    importance: Mapped[int] = mapped_column("importancia", Integer, index=True)
 
     # Economic data
     actual: Mapped[str] = mapped_column(String(100), default="")
-    prevision: Mapped[str] = mapped_column(String(100), default="")
-    anterior: Mapped[str] = mapped_column(String(100), default="")
-    sorpresa: Mapped[str] = mapped_column(String(20), default="neutral")
+    forecast: Mapped[str] = mapped_column("prevision", String(100), default="")
+    previous: Mapped[str] = mapped_column("anterior", String(100), default="")
+    surprise: Mapped[str] = mapped_column("sorpresa", String(20), default="neutral")
 
     # Source
     url: Mapped[str] = mapped_column(String(500), default="")
 
     # AI Analysis - Quick (all events)
-    analisis_rapido: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    impacto_rapido: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    sentimiento_rapido: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    quick_summary: Mapped[Optional[str]] = mapped_column("analisis_rapido", Text, nullable=True)
+    quick_impact: Mapped[Optional[str]] = mapped_column("impacto_rapido", String(20), nullable=True)
+    quick_sentiment: Mapped[Optional[str]] = mapped_column(
+        "sentimiento_rapido", String(20), nullable=True
+    )
 
     # AI Analysis - Deep (high-impact only)
-    analisis_profundo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    contexto_macro: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    niveles_tecnicos: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    estrategias_trading: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    activos_impactados: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    deep_summary: Mapped[Optional[str]] = mapped_column("analisis_profundo", Text, nullable=True)
+    macro_context: Mapped[Optional[str]] = mapped_column("contexto_macro", Text, nullable=True)
+    technical_levels: Mapped[Optional[str]] = mapped_column("niveles_tecnicos", Text, nullable=True)
+    trading_strategies: Mapped[Optional[str]] = mapped_column(
+        "estrategias_trading", Text, nullable=True
+    )
+    impacted_assets: Mapped[Optional[str]] = mapped_column("activos_impactados", String(500), nullable=True)
 
     # Analysis status tracking
     has_quick_analysis: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
@@ -63,68 +67,3 @@ class EventModel(Base):
         Index("idx_date_importance", "date", "importancia"),
         Index("idx_analysis_status", "date", "has_quick_analysis", "has_deep_analysis"),
     )
-
-    # English property aliases for domain layer compatibility
-    @property
-    def time(self) -> str:
-        return self.hora
-
-    @time.setter
-    def time(self, value: str) -> None:
-        self.hora = value
-
-    @property
-    def title(self) -> str:
-        return self.noticia
-
-    @title.setter
-    def title(self, value: str) -> None:
-        self.noticia = value
-
-    @property
-    def country(self) -> str:
-        return self.pais
-
-    @country.setter
-    def country(self, value: str) -> None:
-        self.pais = value
-
-    @property
-    def currency(self) -> str:
-        return self.moneda
-
-    @currency.setter
-    def currency(self, value: str) -> None:
-        self.moneda = value
-
-    @property
-    def importance(self) -> int:
-        return self.importancia
-
-    @importance.setter
-    def importance(self, value: int) -> None:
-        self.importancia = value
-
-    @property
-    def forecast(self) -> str:
-        return self.prevision
-
-    @forecast.setter
-    def forecast(self, value: str) -> None:
-        self.prevision = value
-
-    @property
-    def previous(self) -> str:
-        return self.anterior
-
-    @previous.setter
-    def previous(self, value: str) -> None:
-        self.anterior = value
-
-    @property
-    def surprise(self) -> str:
-        return self.sorpresa
-
-    @surprise.setter
-    def surprise(self, value: str) -> None:
-        self.sorpresa = value

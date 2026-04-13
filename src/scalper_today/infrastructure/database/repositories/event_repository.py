@@ -56,7 +56,7 @@ class EventRepository(IEventRepository):
         if only_missing_analysis:
             query = query.where(EventModel.has_quick_analysis is False)
 
-        query = query.order_by(EventModel.hora, EventModel.pais, EventModel.importancia.desc())
+        query = query.order_by(EventModel.time, EventModel.country, EventModel.importance.desc())
 
         result = await self._session.execute(query)
         models = result.scalars().all()
@@ -70,14 +70,14 @@ class EventRepository(IEventRepository):
             and_(
                 EventModel.date >= datetime.combine(target_date, datetime.min.time()),
                 EventModel.date < datetime.combine(target_date, datetime.max.time()),
-                EventModel.importancia == 3,
+                EventModel.importance == 3,
             )
         )
 
         if only_missing_deep_analysis:
             query = query.where(EventModel.has_deep_analysis is False)
 
-        query = query.order_by(EventModel.hora, EventModel.pais, EventModel.importancia.desc())
+        query = query.order_by(EventModel.time, EventModel.country, EventModel.importance.desc())
 
         result = await self._session.execute(query)
         models = result.scalars().all()
@@ -130,26 +130,26 @@ class EventRepository(IEventRepository):
         if model.has_quick_analysis:
             if model.has_deep_analysis:
                 ai_analysis = AIAnalysis(
-                    summary=model.analisis_profundo or model.analisis_rapido or "",
-                    impact=model.impacto_rapido or "N/A",
-                    sentiment=model.sentimiento_rapido or "NEUTRAL",
+                    summary=model.deep_summary or model.quick_summary or "",
+                    impact=model.quick_impact or "N/A",
+                    sentiment=model.quick_sentiment or "NEUTRAL",
                 )
-                if model.contexto_macro:
-                    ai_analysis.macro_context = model.contexto_macro
-                if model.niveles_tecnicos:
-                    ai_analysis.technical_levels = model.niveles_tecnicos
-                if model.estrategias_trading:
-                    ai_analysis.trading_strategies = model.estrategias_trading
-                if model.activos_impactados:
+                if model.macro_context:
+                    ai_analysis.macro_context = model.macro_context
+                if model.technical_levels:
+                    ai_analysis.technical_levels = model.technical_levels
+                if model.trading_strategies:
+                    ai_analysis.trading_strategies = model.trading_strategies
+                if model.impacted_assets:
                     try:
-                        ai_analysis.impacted_assets = json.loads(model.activos_impactados)
+                        ai_analysis.impacted_assets = json.loads(model.impacted_assets)
                     except (json.JSONDecodeError, TypeError):
-                        ai_analysis.impacted_assets = model.activos_impactados
+                        ai_analysis.impacted_assets = model.impacted_assets
             else:
                 ai_analysis = AIAnalysis(
-                    summary=model.analisis_rapido or "",
-                    impact=model.impacto_rapido or "N/A",
-                    sentiment=model.sentimiento_rapido or "NEUTRAL",
+                    summary=model.quick_summary or "",
+                    impact=model.quick_impact or "N/A",
+                    sentiment=model.quick_sentiment or "NEUTRAL",
                 )
 
         return EconomicEvent(
@@ -210,14 +210,14 @@ class EventRepository(IEventRepository):
             logger.info(
                 f"Event '{event.title}' got actual data '{new_actual}', invalidating AI analysis"
             )
-            model.analisis_rapido = None
-            model.impacto_rapido = None
-            model.sentimiento_rapido = None
-            model.analisis_profundo = None
-            model.contexto_macro = None
-            model.niveles_tecnicos = None
-            model.estrategias_trading = None
-            model.activos_impactados = None
+            model.quick_summary = None
+            model.quick_impact = None
+            model.quick_sentiment = None
+            model.deep_summary = None
+            model.macro_context = None
+            model.technical_levels = None
+            model.trading_strategies = None
+            model.impacted_assets = None
             model.has_quick_analysis = False
             model.has_deep_analysis = False
         else:
@@ -229,27 +229,27 @@ class EventRepository(IEventRepository):
             is_deep = event.ai_analysis.is_deep_analysis
 
             if is_deep:
-                model.analisis_profundo = event.ai_analysis.summary
-                model.impacto_rapido = event.ai_analysis.impact
-                model.sentimiento_rapido = event.ai_analysis.sentiment
-                model.contexto_macro = event.ai_analysis.macro_context
-                model.niveles_tecnicos = event.ai_analysis.technical_levels
-                model.estrategias_trading = event.ai_analysis.trading_strategies
+                model.deep_summary = event.ai_analysis.summary
+                model.quick_impact = event.ai_analysis.impact
+                model.quick_sentiment = event.ai_analysis.sentiment
+                model.macro_context = event.ai_analysis.macro_context
+                model.technical_levels = event.ai_analysis.technical_levels
+                model.trading_strategies = event.ai_analysis.trading_strategies
 
                 assets = event.ai_analysis.impacted_assets
                 if assets and isinstance(assets, list):
-                    model.activos_impactados = json.dumps(assets)
+                    model.impacted_assets = json.dumps(assets)
                 elif assets:
-                    model.activos_impactados = assets
+                    model.impacted_assets = assets
                 else:
-                    model.activos_impactados = None
+                    model.impacted_assets = None
 
                 model.has_deep_analysis = True
                 model.has_quick_analysis = True
             else:
-                model.analisis_rapido = event.ai_analysis.summary
-                model.impacto_rapido = event.ai_analysis.impact
-                model.sentimiento_rapido = event.ai_analysis.sentiment
+                model.quick_summary = event.ai_analysis.summary
+                model.quick_impact = event.ai_analysis.impact
+                model.quick_sentiment = event.ai_analysis.sentiment
                 model.has_quick_analysis = True
 
     @staticmethod
