@@ -1,4 +1,3 @@
-from .cache_key_generator import CacheKeyGenerator
 from .auth import (
     LoginUserUseCase,
     RegisterUserUseCase,
@@ -6,6 +5,7 @@ from .auth import (
     PasswordValidator,
 )
 from .events import (
+    CacheKeyGenerator,
     GetMacroEventsUseCase,
     GetUpcomingEventsUseCase,
     GetAvailableCountriesUseCase,

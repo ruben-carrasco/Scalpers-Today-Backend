@@ -6,7 +6,7 @@ import pytz
 
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IAIAnalyzer, IEventScraper, IEventRepository
-from scalper_today.domain.usecases.cache_key_generator import CacheKeyGenerator
+from .cache_key_generator import CacheKeyGenerator
 
 logger = logging.getLogger(__name__)
 
