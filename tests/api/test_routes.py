@@ -15,8 +15,8 @@ def test_auth_routes_exist(client):
 
 def test_events_routes_exist(client):
     response = client.get("/api/v1/macro")
-    # Could be 200 (empty list due to mock) or 500 depending on how the mocked container handles it
-    assert response.status_code in [200, 500]
+    # Could be 200 (events), 503 (no data available), or 500 (unexpected server error)
+    assert response.status_code in [200, 503, 500]
 
 
 def test_docs_exist(client):

@@ -45,8 +45,11 @@ Returns the economic calendar for today with AI analysis.
 ]
 ```
 
+**Possible errors**
+- `503`: no events available from provider and no cached events for today.
+
 ### POST `/macro/refresh`
-Forces a fresh scrape from Investing.com.
+Forces a fresh refresh from the configured calendar provider.
 - **Header required**: `X-API-Key: <refresh_key>`
 
 ---

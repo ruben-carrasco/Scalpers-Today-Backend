@@ -41,11 +41,15 @@ ContainerDep = Annotated[Container, Depends(get_container)]
         200: {
             "description": "List of economic events retrieved successfully.",
         },
+        503: {"description": "Economic events temporarily unavailable."},
         500: {"description": "Internal server error fetching events."},
     },
 )
 async def get_macro_events(c: ContainerDep) -> List[EconomicEvent]:
-    return await c.get_macro_events()
+    events = await c.get_macro_events()
+    if not events:
+        raise HTTPException(status_code=503, detail="Economic events temporarily unavailable")
+    return events
 
 
 @router.post(

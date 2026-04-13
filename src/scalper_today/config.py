@@ -25,6 +25,9 @@ class Settings(BaseSettings):
 
     http_timeout_seconds: float = 90.0
 
+    fmp_api_key: str = Field(default="", description="Financial Modeling Prep API key")
+    fmp_calendar_url: str = "https://financialmodelingprep.com/stable/economic-calendar"
+
     investing_api_url: str = (
         "https://www.investing.com/economic-calendar/Service/getCalendarFilteredData"
     )
