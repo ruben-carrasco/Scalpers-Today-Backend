@@ -1,7 +1,10 @@
 import logging
+import time
+from collections import defaultdict
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security
+from fastapi.security import APIKeyHeader
 
 from scalper_today.api.dependencies import Container, get_container
 from scalper_today.domain.entities import EconomicEvent
@@ -27,15 +30,50 @@ from ..schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 # Dependency type alias for cleaner route signatures
 ContainerDep = Annotated[Container, Depends(get_container)]
+
+# Refresh endpoint anti-abuse rate limit
+_refresh_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+REFRESH_RATE_LIMIT_MAX_ATTEMPTS = 10
+REFRESH_RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        first_ip = forwarded_for.split(",")[0].strip()
+        if first_ip:
+            return first_ip
+    return request.client.host if request.client else "unknown"
+
+
+def _check_refresh_rate_limit(request: Request) -> None:
+    client_ip = _get_client_ip(request)
+    key = f"{client_ip}:{request.url.path}"
+    now = time.monotonic()
+    attempts = _refresh_rate_limit_store[key]
+    _refresh_rate_limit_store[key] = [
+        t for t in attempts if now - t < REFRESH_RATE_LIMIT_WINDOW_SECONDS
+    ]
+
+    if len(_refresh_rate_limit_store[key]) >= REFRESH_RATE_LIMIT_MAX_ATTEMPTS:
+        logger.warning("Refresh rate limit exceeded", extra={"ip": client_ip})
+        raise HTTPException(status_code=429, detail="Too many refresh requests. Try again later.")
+
+    _refresh_rate_limit_store[key].append(now)
 
 
 @router.get(
     "/macro",
     tags=["Events"],
     summary="Get Economic Events",
+    description=(
+        "Returns today's normalized economic events. "
+        "If the upstream provider has no data and local cache is empty, returns `503`."
+    ),
     response_model=List[EventResponse],
     responses={
         200: {
@@ -56,16 +94,23 @@ async def get_macro_events(c: ContainerDep) -> List[EconomicEvent]:
     "/macro/refresh",
     tags=["Events"],
     summary="Force Refresh Events",
+    description=(
+        "Forces a provider refresh and cache update for today's events. "
+        "Requires `X-API-Key` header."
+    ),
     response_model=RefreshEventsResponse,
     responses={
         200: {"description": "Events refreshed successfully."},
         403: {"description": "Invalid or missing API key."},
+        429: {"description": "Too many refresh requests."},
     },
 )
 async def refresh_macro_events(
     c: ContainerDep,
-    api_key: Annotated[Optional[str], Header(alias="X-API-Key")] = None,
+    req: Request,
+    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
 ) -> RefreshEventsResponse:
+    _check_refresh_rate_limit(req)
     expected_key = c.settings.refresh_api_key
     if not expected_key or api_key != expected_key:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")

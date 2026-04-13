@@ -47,39 +47,36 @@ def custom_openapi(app: FastAPI) -> Dict[str, Any]:
         routes=app.routes,
     )
 
-    # Define the security scheme
+    # Define security schemes used by the API.
     openapi_schema["components"]["securitySchemes"] = {
         "BearerAuth": {
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "JWT",
-        }
+        },
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-API-Key",
+        },
     }
 
-    # Public paths that should NOT have a lock icon
-    public_paths = [
-        "/login",
-        "/register",
-        "/health",
-        "/live",
-        "/ready",
-        "/docs",
-        "/redoc",
-        "/openapi.json",
-    ]
-
     for path, methods in openapi_schema["paths"].items():
-        # Check if this path should be public
-        is_public = any(pub in path for pub in public_paths)
+        for method in methods:
+            operation = openapi_schema["paths"][path][method]
 
-        if not is_public:
-            for method in methods:
-                openapi_schema["paths"][path][method]["security"] = [{"BearerAuth": []}]
-        else:
-            for method in methods:
-                # Ensure public methods have no security defined
-                if "security" in openapi_schema["paths"][path][method]:
-                    del openapi_schema["paths"][path][method]["security"]
+            # Explicit API key protected operation
+            if path == "/api/v1/macro/refresh":
+                operation["security"] = [{"ApiKeyAuth": []}]
+                continue
+
+            # JWT-protected operations
+            if path == "/api/v1/auth/me" or path.startswith("/api/v1/alerts"):
+                operation["security"] = [{"BearerAuth": []}]
+                continue
+
+            # Public operation: ensure no lock icon
+            operation.pop("security", None)
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
@@ -138,7 +135,7 @@ def create_app() -> FastAPI:
         allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept"],
+        allow_headers=["Authorization", "Content-Type", "Accept", "X-API-Key"],
     )
 
     app.include_router(core_router, prefix="/api/v1")

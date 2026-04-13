@@ -40,22 +40,34 @@ RATE_LIMIT_MAX_ATTEMPTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
 
 
-def _check_rate_limit(request: Request) -> None:
-    client_ip = request.client.host if request.client else "unknown"
+def _get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        first_ip = forwarded_for.split(",")[0].strip()
+        if first_ip:
+            return first_ip
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate_limit(request: Request, key_suffix: str | None = None) -> None:
+    client_ip = _get_client_ip(request)
+    route_path = request.url.path
+    suffix = (key_suffix or "").strip().lower()
+    key = f"{client_ip}:{route_path}:{suffix}" if suffix else f"{client_ip}:{route_path}"
     now = time.monotonic()
-    attempts = _rate_limit_store[client_ip]
+    attempts = _rate_limit_store[key]
 
     # Remove attempts outside the window
-    _rate_limit_store[client_ip] = [t for t in attempts if now - t < RATE_LIMIT_WINDOW_SECONDS]
+    _rate_limit_store[key] = [t for t in attempts if now - t < RATE_LIMIT_WINDOW_SECONDS]
 
-    if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX_ATTEMPTS:
-        logger.warning(f"Rate limit exceeded for {client_ip}")
+    if len(_rate_limit_store[key]) >= RATE_LIMIT_MAX_ATTEMPTS:
+        logger.warning("Rate limit exceeded", extra={"ip": client_ip, "route": route_path})
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many requests. Please try again later.",
         )
 
-    _rate_limit_store[client_ip].append(now)
+    _rate_limit_store[key].append(now)
 
 
 def _map_user_to_response(user) -> UserResponse:
@@ -115,7 +127,7 @@ async def get_current_user_dep(
     description="Create a new user account with email and password",
 )
 async def register(request: RegisterRequest, container: ContainerDep, req: Request):
-    _check_rate_limit(req)
+    _check_rate_limit(req, request.email)
     async with container.database_manager.session() as session:
         user_repo = container.get_user_repository(session)
         jwt_service = container.get_jwt_service()
@@ -150,7 +162,7 @@ async def register(request: RegisterRequest, container: ContainerDep, req: Reque
     description="Authenticate with email and password, receive JWT token",
 )
 async def login(request: LoginRequest, container: ContainerDep, req: Request):
-    _check_rate_limit(req)
+    _check_rate_limit(req, request.email)
     async with container.database_manager.session() as session:
         user_repo = container.get_user_repository(session)
         jwt_service = container.get_jwt_service()
