@@ -6,7 +6,6 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
-os.environ.setdefault("FMP_API_KEY", "test_fmp_api_key")
 
 from fastapi.testclient import TestClient
 from scalper_today.api.app import app

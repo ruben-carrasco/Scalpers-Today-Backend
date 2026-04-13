@@ -19,7 +19,7 @@ from scalper_today.domain.interfaces import (
 from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
 from scalper_today.domain.usecases import GetDailyBriefingUseCase, GetHomeSummaryUseCase, GetMacroEventsUseCase
 from scalper_today.config import Settings, get_settings
-from scalper_today.infrastructure import FmpCalendarProvider, OpenRouterAnalyzer
+from scalper_today.infrastructure import ForexFactoryCalendarProvider, OpenRouterAnalyzer
 from scalper_today.infrastructure.database import (
     DatabaseManager,
     EventRepository,
@@ -132,9 +132,6 @@ async def init_container() -> AsyncIterator[Container]:
     if not settings.is_auth_configured:
         logger.warning("⚠️  JWT_SECRET_KEY not properly set - Using development mode (insecure!)")
 
-    if not settings.fmp_api_key:
-        raise RuntimeError("FMP_API_KEY must be set")
-
     db_url = get_db_url(settings.database_path)
     db_manager = DatabaseManager(db_url)
     await db_manager.create_tables()
@@ -146,7 +143,7 @@ async def init_container() -> AsyncIterator[Container]:
         http2=True,
     )
 
-    scraper = FmpCalendarProvider(settings, http_client)
+    scraper = ForexFactoryCalendarProvider(settings, http_client)
     analyzer = OpenRouterAnalyzer(settings, http_client)
 
     # SECURITY: Fail fast if no secret key in production

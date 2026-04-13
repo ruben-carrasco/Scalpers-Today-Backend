@@ -69,7 +69,7 @@ Variables de entorno requeridas (`.env`):
 
 ```env
 OPENROUTER_API_KEY=sk-or-v1-...
-FMP_API_KEY=tu_api_key_de_fmp
+FOREXFACTORY_CALENDAR_URL=https://nfs.faireconomy.media/ff_calendar_thisweek.json
 JWT_SECRET_KEY=tu_secreto_para_jwt
 REFRESH_API_KEY=clave_para_forzar_refresh
 APP_ENV=production

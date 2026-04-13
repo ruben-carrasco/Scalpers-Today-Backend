@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     fmp_api_key: str = Field(default="", description="Financial Modeling Prep API key")
     fmp_calendar_url: str = "https://financialmodelingprep.com/stable/economic-calendar"
+    tradingeconomics_api_key: str = Field(
+        default="guest:guest", description="TradingEconomics API key format user:password"
+    )
+    tradingeconomics_calendar_url: str = "https://api.tradingeconomics.com/calendar/country/all"
+    forexfactory_calendar_url: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 
     investing_api_url: str = (
         "https://www.investing.com/economic-calendar/Service/getCalendarFilteredData"
