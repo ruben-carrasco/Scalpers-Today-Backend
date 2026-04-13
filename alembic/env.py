@@ -14,7 +14,7 @@ from alembic import context
 
 from scalper_today.config import get_settings
 from scalper_today.infrastructure.database.models.base import Base
-from scalper_today.infrastructure.database.connection import get_db_url
+from scalper_today.infrastructure.database.database_manager import get_db_url
 
 # Make sure all models are imported so metadata.create_all finds them
 from scalper_today.infrastructure.database.models import *  # noqa: F403

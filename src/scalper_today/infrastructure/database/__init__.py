@@ -1,5 +1,5 @@
 from .models import Base, EventModel, DailyBriefingModel, UserModel, AlertModel, DeviceTokenModel
-from .connection import DatabaseManager, get_db_session, get_db_url
+from .database_manager import DatabaseManager, get_db_session, get_db_url
 from .repositories import EventRepository, UserRepository, AlertRepository, DeviceTokenRepository
 
 __all__ = [
