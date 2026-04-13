@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, date
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytz
 

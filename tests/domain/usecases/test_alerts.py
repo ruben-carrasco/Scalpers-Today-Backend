@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock
-from datetime import datetime, timezone
 
 from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertType, AlertStatus
 from scalper_today.domain.dtos import CreateAlertRequest, UpdateAlertRequest
