@@ -342,7 +342,8 @@ src/scalper_today/
 ├── api/                    # Capa de Presentación (Controllers)
 │   ├── app.py             # Factory de aplicación
 │   ├── routes/            # Endpoints organizados por dominio
-│   │   ├── system.py      # Endpoints de eventos y sistema
+│   │   ├── core.py        # Endpoints de sistema (health/live/ready)
+│   │   ├── events.py      # Endpoints de eventos y home
 │   │   ├── auth.py        # Endpoints de autenticación
 │   │   └── alerts.py      # Endpoints de alertas
 │   ├── exception_handlers.py # Manejo global de errores

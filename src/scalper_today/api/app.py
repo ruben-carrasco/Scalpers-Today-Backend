@@ -8,7 +8,8 @@ from fastapi.openapi.utils import get_openapi
 
 from scalper_today.api.dependencies import init_container
 from scalper_today.config import get_settings
-from .routes.system import router
+from .routes.core import router as core_router
+from .routes.events import router as events_router
 from .exception_handlers import register_exception_handlers
 
 logger = logging.getLogger(__name__)
@@ -140,7 +141,8 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
-    app.include_router(router, prefix="/api/v1")
+    app.include_router(core_router, prefix="/api/v1")
+    app.include_router(events_router, prefix="/api/v1")
 
     from .routes import auth, alerts
 
