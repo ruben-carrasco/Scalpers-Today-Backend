@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import String, DateTime, Text, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from ..base import Base
 
 
 class UserModel(Base):

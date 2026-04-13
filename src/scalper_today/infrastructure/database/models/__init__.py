@@ -1,9 +1,7 @@
 from .base import Base
-from .event_model import EventModel
-from .daily_briefing_model import DailyBriefingModel
-from .user_model import UserModel
-from .alert_model import AlertModel
-from .device_token_model import DeviceTokenModel
+from .events import EventModel, DailyBriefingModel
+from .auth import UserModel
+from .alerts import AlertModel, DeviceTokenModel
 
 __all__ = [
     "Base",
