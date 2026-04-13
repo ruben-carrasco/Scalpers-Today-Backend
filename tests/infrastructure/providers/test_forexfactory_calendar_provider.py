@@ -25,7 +25,8 @@ def make_settings(**overrides) -> Settings:
 
 
 def test_parse_payload_maps_event_fields():
-    provider = ForexFactoryCalendarProvider(make_settings(), MagicMock())
+    settings = make_settings()
+    provider = ForexFactoryCalendarProvider(settings, MagicMock())
     payload = [
         {
             "title": "CPI y/y",
@@ -50,6 +51,32 @@ def test_parse_payload_maps_event_fields():
     assert event.forecast == "3.0%"
     assert event.previous == "2.9%"
     assert event.surprise == "positive"
+    assert event.url == settings.forexfactory_calendar_url
+
+
+def test_parse_payload_fills_missing_data_fields():
+    provider = ForexFactoryCalendarProvider(make_settings(), MagicMock())
+    payload = [
+        {
+            "title": "Industrial Production m/m",
+            "country": "",
+            "date": "2026-04-13T08:00:00+00:00",
+            "impact": "Medium",
+            "actual": "",
+            "forecast": "",
+            "previous": "",
+        }
+    ]
+
+    events = provider._parse_payload(payload, date(2026, 4, 13))
+
+    assert len(events) == 1
+    event = events[0]
+    assert event.country == "N/A"
+    assert event.currency == "N/A"
+    assert event.actual == "N/A"
+    assert event.forecast == "N/A"
+    assert event.previous == "N/A"
 
 
 @pytest.mark.asyncio

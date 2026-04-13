@@ -18,6 +18,7 @@ class ForexFactoryCalendarProvider(IEventScraper):
     TZ_MADRID = pytz.timezone("Europe/Madrid")
     MAX_RETRIES = 2
     RETRY_BASE_DELAY_SECONDS = 1
+    MISSING_FIELD_VALUE = "N/A"
 
     HEADERS = {
         "User-Agent": (
@@ -108,11 +109,11 @@ class ForexFactoryCalendarProvider(IEventScraper):
         if event_dt is None or event_dt.date() != target_date:
             return None
 
-        currency = self._safe_text(row.get("country"))
-        country = currency or "Global"
-        actual = self._safe_text(row.get("actual"))
-        forecast = self._safe_text(row.get("forecast"))
-        previous = self._safe_text(row.get("previous"))
+        currency = self._safe_text(row.get("country")) or self.MISSING_FIELD_VALUE
+        country = currency
+        actual = self._data_value(row.get("actual"))
+        forecast = self._data_value(row.get("forecast"))
+        previous = self._data_value(row.get("previous"))
 
         raw_impact = self._safe_text(row.get("impact"))
         importance = Importance(self._extract_importance(raw_impact))
@@ -131,7 +132,7 @@ class ForexFactoryCalendarProvider(IEventScraper):
             forecast=forecast,
             previous=previous,
             surprise=surprise,
-            url="",
+            url=self._settings.forexfactory_calendar_url,
             _timestamp=event_dt,
         )
 
@@ -204,3 +205,7 @@ class ForexFactoryCalendarProvider(IEventScraper):
         if value is None:
             return ""
         return str(value).strip()
+
+    def _data_value(self, value: Any) -> str:
+        text = self._safe_text(value)
+        return text if text else self.MISSING_FIELD_VALUE
