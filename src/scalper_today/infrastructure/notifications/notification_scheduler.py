@@ -7,7 +7,7 @@ import pytz
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from scalper_today.domain.entities import Alert, AlertCondition, EconomicEvent, AlertType
-from .expo_push_service import ExpoPushService
+from .expo import ExpoPushService
 
 logger = logging.getLogger(__name__)
 

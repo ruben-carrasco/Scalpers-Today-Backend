@@ -29,7 +29,7 @@ from scalper_today.infrastructure.database import (
     get_db_url,
 )
 from scalper_today.infrastructure.auth import JWTService
-from scalper_today.infrastructure.notifications.expo_push_service import ExpoPushService
+from scalper_today.infrastructure.notifications.expo import ExpoPushService
 from scalper_today.infrastructure.notifications.notification_scheduler import NotificationScheduler
 
 logger = logging.getLogger(__name__)
