@@ -20,10 +20,14 @@ from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSumm
 from scalper_today.domain.usecases import GetDailyBriefingUseCase, GetHomeSummaryUseCase, GetMacroEventsUseCase
 from scalper_today.config import Settings, get_settings
 from scalper_today.infrastructure import InvestingComScraper, OpenRouterAnalyzer
-from scalper_today.infrastructure.database import DatabaseManager, EventRepository, get_db_url
-from scalper_today.infrastructure.database.user_repository import UserRepository
-from scalper_today.infrastructure.database.alert_repository import AlertRepository
-from scalper_today.infrastructure.database.device_token_repository import DeviceTokenRepository
+from scalper_today.infrastructure.database import (
+    DatabaseManager,
+    EventRepository,
+    UserRepository,
+    AlertRepository,
+    DeviceTokenRepository,
+    get_db_url,
+)
 from scalper_today.infrastructure.auth import JWTService
 from scalper_today.infrastructure.notifications.expo_push_service import ExpoPushService
 from scalper_today.infrastructure.notifications.notification_scheduler import NotificationScheduler

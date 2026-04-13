@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...domain.entities import User, UserPreferences, Language, Currency, Timezone
-from ...domain.interfaces import IUserRepository
-from .models import UserModel
+from ....domain.entities import User, UserPreferences, Language, Currency, Timezone
+from ....domain.interfaces import IUserRepository
+from ..models import UserModel
 
 logger = logging.getLogger(__name__)
 

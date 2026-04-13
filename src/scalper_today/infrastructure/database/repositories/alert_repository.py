@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...domain.entities import Alert, AlertCondition, AlertStatus, AlertType
-from ...domain.interfaces import IAlertRepository
-from .models import AlertModel
+from ....domain.entities import Alert, AlertCondition, AlertStatus, AlertType
+from ....domain.interfaces import IAlertRepository
+from ..models import AlertModel
 
 logger = logging.getLogger(__name__)
 

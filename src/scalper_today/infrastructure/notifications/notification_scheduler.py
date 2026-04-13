@@ -91,7 +91,7 @@ class NotificationScheduler:
             logger.info(f"📋 [SCHEDULER] Found {len(events)} total events for today")
 
             # Get all active alerts first to log them
-            from scalper_today.infrastructure.database.alert_repository import AlertRepository
+            from scalper_today.infrastructure.database.repositories import AlertRepository
 
             alert_repo = AlertRepository(session)
             all_alerts = await alert_repo.get_active_alerts()
@@ -178,7 +178,7 @@ class NotificationScheduler:
         logger.info(f"🎯 [SCHEDULER] Event '{event.title}' matches {len(users_to_notify)} users")
 
         # Get device tokens for all users
-        from scalper_today.infrastructure.database.device_token_repository import (
+        from scalper_today.infrastructure.database.repositories import (
             DeviceTokenRepository,
         )
 
@@ -223,7 +223,7 @@ class NotificationScheduler:
         self._notified_events[event_id].update(users_to_notify)
 
         # Update alert trigger counts
-        from scalper_today.infrastructure.database.alert_repository import AlertRepository
+        from scalper_today.infrastructure.database.repositories import AlertRepository
 
         alert_repo = AlertRepository(session)
 

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from scalper_today.domain import EconomicEvent, AIAnalysis, DailyBriefing, BriefingStats
 from scalper_today.domain.interfaces import IEventRepository
-from .models import EventModel, DailyBriefingModel
+from ..models import EventModel, DailyBriefingModel
 
 logger = logging.getLogger(__name__)
 
