@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import AsyncIterator, Optional, List
 
 import httpx
@@ -21,6 +21,7 @@ from scalper_today.domain.usecases import (
     GetDailyBriefingUseCase,
     GetHomeSummaryUseCase,
     GetMacroEventsUseCase,
+    GetWeekEventsUseCase,
 )
 from scalper_today.config import Settings, get_settings
 from scalper_today.infrastructure import ForexFactoryCalendarProvider, OpenRouterAnalyzer
@@ -38,6 +39,12 @@ from scalper_today.infrastructure.notifications.notification_scheduler import No
 
 logger = logging.getLogger(__name__)
 TZ_MADRID = pytz.timezone("Europe/Madrid")
+
+
+def _current_week_range(target_date: date) -> tuple[date, date]:
+    week_start = target_date - timedelta(days=target_date.weekday())
+    week_end = week_start + timedelta(days=6)
+    return week_start, week_end
 
 
 class Container:
@@ -90,6 +97,19 @@ class Container:
             repository = self.get_event_repository(session)
             use_case = GetMacroEventsUseCase(
                 self.provider, repository, self.analyzer, target_date=madrid_date
+            )
+            return await use_case.execute(force_refresh=force_refresh)
+
+    async def get_week_events(self, force_refresh: bool = False) -> List[EconomicEvent]:
+        madrid_date = datetime.now(TZ_MADRID).date()
+        week_start, week_end = _current_week_range(madrid_date)
+        async with self.database_manager.session() as session:
+            repository = self.get_event_repository(session)
+            use_case = GetWeekEventsUseCase(
+                self.provider,
+                repository,
+                start_date=week_start,
+                end_date=week_end,
             )
             return await use_case.execute(force_refresh=force_refresh)
 

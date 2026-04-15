@@ -16,6 +16,7 @@ from scalper_today.domain.usecases import (
 )
 from ..schemas import (
     EventResponse,
+    WeekEventResponse,
     HomeSummaryResponse,
     DailyBriefingResponse,
     FilteredEventsResponse,
@@ -182,6 +183,17 @@ async def get_filtered_events(
     paginated = filtered[offset : offset + limit]
 
     return FilteredEventsResponse(total=len(filtered), filters_applied=criteria, events=paginated)
+
+
+@router.get(
+    "/events/week",
+    tags=["Mobile - Events"],
+    summary="Weekly Events",
+    response_model=List[WeekEventResponse],
+)
+async def get_week_events(c: ContainerDep) -> List[WeekEventResponse]:
+    events = await c.get_week_events()
+    return [WeekEventResponse.from_domain(event) for event in events]
 
 
 @router.get(

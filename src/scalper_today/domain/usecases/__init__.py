@@ -7,6 +7,7 @@ from .auth import (
 from .events import (
     CacheKeyGenerator,
     GetMacroEventsUseCase,
+    GetWeekEventsUseCase,
     GetUpcomingEventsUseCase,
     GetAvailableCountriesUseCase,
     EventFilter,
@@ -45,6 +46,7 @@ __all__ = [
     "PasswordRequirements",
     "PasswordValidationResult",
     "GetMacroEventsUseCase",
+    "GetWeekEventsUseCase",
     "GetDailyBriefingUseCase",
     "GetHomeSummaryUseCase",
     "GetUpcomingEventsUseCase",
