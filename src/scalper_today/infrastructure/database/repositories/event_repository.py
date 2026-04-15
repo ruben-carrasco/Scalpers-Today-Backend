@@ -20,19 +20,31 @@ class EventRepository(IEventRepository):
         self._session = session
 
     async def get_cache_last_update(self, target_date: date) -> Optional[datetime]:
+        query = select(func.max(EventModel.updated_at)).where(*self._range_clause(target_date, target_date))
+        result = await self._session.execute(query)
+        return result.scalar()
+
+    async def get_range_cache_last_update(
+        self, start_date: date, end_date: date
+    ) -> Optional[datetime]:
         query = select(func.max(EventModel.updated_at)).where(
-            EventModel.date >= datetime.combine(target_date, datetime.min.time()),
-            EventModel.date < datetime.combine(target_date, datetime.max.time()),
+            *self._range_clause(start_date, end_date)
         )
         result = await self._session.execute(query)
         return result.scalar()
 
     async def is_cache_valid(self, target_date: date) -> bool:
         last_update = await self.get_cache_last_update(target_date)
+        return self._is_cache_timestamp_valid(last_update)
 
+    async def is_range_cache_valid(self, start_date: date, end_date: date) -> bool:
+        last_update = await self.get_range_cache_last_update(start_date, end_date)
+        return self._is_cache_timestamp_valid(last_update)
+
+    @staticmethod
+    def _is_cache_timestamp_valid(last_update: Optional[datetime]) -> bool:
         if last_update is None:
             return False
-
         now = datetime.now(timezone.utc)
         if last_update.tzinfo is None:
             now = now.replace(tzinfo=None)
@@ -48,10 +60,7 @@ class EventRepository(IEventRepository):
     async def get_events_by_date(
         self, target_date: date, only_missing_analysis: bool = False
     ) -> List[EconomicEvent]:
-        query = select(EventModel).where(
-            EventModel.date >= datetime.combine(target_date, datetime.min.time()),
-            EventModel.date < datetime.combine(target_date, datetime.max.time()),
-        )
+        query = select(EventModel).where(*self._range_clause(target_date, target_date))
 
         if only_missing_analysis:
             query = query.where(EventModel.has_quick_analysis is False)
@@ -61,6 +70,17 @@ class EventRepository(IEventRepository):
         result = await self._session.execute(query)
         models = result.scalars().all()
 
+        return [self._to_domain(model) for model in models]
+
+    async def get_events_in_range(self, start_date: date, end_date: date) -> List[EconomicEvent]:
+        query = (
+            select(EventModel)
+            .where(*self._range_clause(start_date, end_date))
+            .order_by(EventModel.date, EventModel.time, EventModel.country, EventModel.importance.desc())
+        )
+
+        result = await self._session.execute(query)
+        models = result.scalars().all()
         return [self._to_domain(model) for model in models]
 
     async def get_high_impact_events(
@@ -297,3 +317,12 @@ class EventRepository(IEventRepository):
         model.volatility_level = briefing.statistics.volatility_level
         model.total_events = briefing.statistics.total_events_today
         model.high_impact_count = briefing.statistics.high_impact_count
+
+    @staticmethod
+    def _range_clause(start_date: date, end_date: date):
+        range_start = datetime.combine(start_date, datetime.min.time())
+        range_end = datetime.combine(end_date, datetime.max.time())
+        return (
+            EventModel.date >= range_start,
+            EventModel.date <= range_end,
+        )

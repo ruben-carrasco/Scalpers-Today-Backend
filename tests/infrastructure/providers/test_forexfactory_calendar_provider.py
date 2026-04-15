@@ -39,7 +39,7 @@ def test_parse_payload_maps_event_fields():
         }
     ]
 
-    events = provider._parse_payload(payload, date(2026, 4, 13))
+    events = provider._parse_payload(payload, date(2026, 4, 13), date(2026, 4, 13))
 
     assert len(events) == 1
     event = events[0]
@@ -68,7 +68,7 @@ def test_parse_payload_fills_missing_data_fields():
         }
     ]
 
-    events = provider._parse_payload(payload, date(2026, 4, 13))
+    events = provider._parse_payload(payload, date(2026, 4, 13), date(2026, 4, 13))
 
     assert len(events) == 1
     event = events[0]
@@ -77,6 +77,32 @@ def test_parse_payload_fills_missing_data_fields():
     assert event.actual == "N/A"
     assert event.forecast == "N/A"
     assert event.previous == "N/A"
+
+
+def test_parse_payload_includes_multiple_days_in_range():
+    provider = ForexFactoryCalendarProvider(make_settings(), MagicMock())
+    payload = [
+        {
+            "title": "CPI y/y",
+            "country": "USD",
+            "date": "2026-04-13T14:30:00+00:00",
+            "impact": "High",
+        },
+        {
+            "title": "GDP q/q",
+            "country": "EUR",
+            "date": "2026-04-15T09:00:00+00:00",
+            "impact": "Medium",
+        },
+    ]
+
+    events = provider._parse_payload(payload, date(2026, 4, 13), date(2026, 4, 19))
+
+    assert len(events) == 2
+    assert {event._timestamp.date().isoformat() for event in events if event._timestamp} == {
+        "2026-04-13",
+        "2026-04-15",
+    }
 
 
 @pytest.mark.asyncio

@@ -11,13 +11,27 @@ class IEventRepository(ABC):
         pass
 
     @abstractmethod
+    async def is_range_cache_valid(self, start_date: date, end_date: date) -> bool:
+        pass
+
+    @abstractmethod
     async def get_cache_last_update(self, target_date: date) -> Optional[datetime]:
+        pass
+
+    @abstractmethod
+    async def get_range_cache_last_update(
+        self, start_date: date, end_date: date
+    ) -> Optional[datetime]:
         pass
 
     @abstractmethod
     async def get_events_by_date(
         self, target_date: date, only_missing_analysis: bool = False
     ) -> List[EconomicEvent]:
+        pass
+
+    @abstractmethod
+    async def get_events_in_range(self, start_date: date, end_date: date) -> List[EconomicEvent]:
         pass
 
     @abstractmethod

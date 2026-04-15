@@ -35,10 +35,15 @@ class ForexFactoryCalendarProvider(IEventProvider):
 
     async def fetch_today_events(self) -> list[EconomicEvent]:
         target_date = datetime.now(self.TZ_MADRID).date()
+        return await self.fetch_events_in_range(target_date, target_date)
+
+    async def fetch_events_in_range(
+        self, start_date: date, end_date: date
+    ) -> list[EconomicEvent]:
         payload = await self._fetch_payload()
         if payload is None:
             return []
-        return self._parse_payload(payload, target_date)
+        return self._parse_payload(payload, start_date, end_date)
 
     async def _fetch_payload(self) -> Optional[Any]:
         last_exception: Optional[Exception] = None
@@ -83,7 +88,9 @@ class ForexFactoryCalendarProvider(IEventProvider):
             )
         return None
 
-    def _parse_payload(self, payload: Any, target_date: date) -> list[EconomicEvent]:
+    def _parse_payload(
+        self, payload: Any, start_date: date, end_date: date
+    ) -> list[EconomicEvent]:
         if not isinstance(payload, list):
             return []
 
@@ -91,22 +98,35 @@ class ForexFactoryCalendarProvider(IEventProvider):
         for row in payload:
             if not isinstance(row, dict):
                 continue
-            event = self._to_event(row, target_date)
+            event = self._to_event(row, start_date, end_date)
             if event is not None:
                 events_by_id[event.id] = event
 
         events = list(events_by_id.values())
-        events.sort(key=lambda e: (e.time or "99:99", e.country or "ZZZ", -int(e.importance.value)))
+        events.sort(
+            key=lambda e: (
+                e._timestamp.isoformat() if e._timestamp else "",
+                e.time or "99:99",
+                e.country or "ZZZ",
+                -int(e.importance.value),
+            )
+        )
         logger.info("Parsed events from ForexFactory", extra={"count": len(events)})
         return events
 
-    def _to_event(self, row: dict[str, Any], target_date: date) -> Optional[EconomicEvent]:
+    def _to_event(
+        self, row: dict[str, Any], start_date: date, end_date: date
+    ) -> Optional[EconomicEvent]:
         title = self._safe_text(row.get("title"))
         if not title:
             return None
 
         event_dt = self._extract_datetime(row.get("date"))
-        if event_dt is None or event_dt.date() != target_date:
+        if event_dt is None:
+            return None
+
+        event_date = event_dt.date()
+        if event_date < start_date or event_date > end_date:
             return None
 
         currency = self._safe_text(row.get("country")) or self.MISSING_FIELD_VALUE

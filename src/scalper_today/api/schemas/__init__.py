@@ -25,6 +25,7 @@ from .alerts import (
 from .events import (
     AIAnalysisResponse,
     EventResponse,
+    WeekEventResponse,
     FilteredEventsResponse,
     FilterCriteriaSchema,
     UpcomingEventsResponse,
@@ -57,6 +58,7 @@ __all__ = [
     "DeviceTokenResponse",
     "AIAnalysisResponse",
     "EventResponse",
+    "WeekEventResponse",
     "HomeSummaryResponse",
     "WelcomeSchema",
     "TodayStatsSchema",

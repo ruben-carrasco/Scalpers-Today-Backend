@@ -36,6 +36,11 @@ def test_filtered_events_default_pagination(client):
     assert response.status_code in [200, 500]
 
 
+def test_week_events_route_exists(client):
+    response = client.get("/api/v1/events/week")
+    assert response.status_code in [200, 500]
+
+
 def test_filtered_events_limit_exceeds_max(client):
     # limit > 100 should return validation error
     response = client.get("/api/v1/events/filtered?limit=200")
