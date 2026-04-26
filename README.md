@@ -103,6 +103,7 @@ La fuente activa del calendario se controla con `EVENT_PROVIDER`:
 - valor por defecto: `https://nfs.faireconomy.media/ff_calendar_thisweek.json`
 - variables RapidAPI: `RAPIDAPI_CALENDAR_KEY`, `RAPIDAPI_CALENDAR_HOST`, `RAPIDAPI_CALENDAR_URL`
 - para planes gratuitos de 30 requests/mes, usar `CALENDAR_CACHE_TTL_MINUTES=10080` o superior;
+- el workflow `Refresh Events` se ejecuta lunes y jueves a las 05:15 UTC para evitar agotar la cuota gratuita;
 - si `rapidapi` no está configurado, no devuelve datos o falla, el backend usa ForexFactory como fallback.
 
 Importante:
