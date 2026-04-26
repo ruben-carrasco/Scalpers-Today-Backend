@@ -24,7 +24,12 @@ from scalper_today.domain.usecases import (
     GetWeekEventsUseCase,
 )
 from scalper_today.config import Settings, get_settings
-from scalper_today.infrastructure import ForexFactoryCalendarProvider, OpenRouterAnalyzer
+from scalper_today.infrastructure import (
+    FallbackCalendarProvider,
+    ForexFactoryCalendarProvider,
+    OpenRouterAnalyzer,
+    RapidApiCalendarProvider,
+)
 from scalper_today.infrastructure.database import (
     DatabaseManager,
     EventRepository,
@@ -83,7 +88,7 @@ class Container:
         return UserRepository(session)
 
     def get_event_repository(self, session: AsyncSession) -> IEventRepository:
-        return EventRepository(session)
+        return EventRepository(session, cache_ttl_minutes=self.settings.calendar_cache_ttl_minutes)
 
     def get_alert_repository(self, session: AsyncSession) -> IAlertRepository:
         return AlertRepository(session)
@@ -145,6 +150,28 @@ def get_container() -> Container:
     return Container.get_instance()
 
 
+def _build_event_provider(settings: Settings, http_client: httpx.AsyncClient) -> IEventProvider:
+    forexfactory_provider = ForexFactoryCalendarProvider(settings, http_client)
+    if settings.event_provider == "forexfactory":
+        return forexfactory_provider
+
+    if not settings.rapidapi_calendar_key:
+        logger.warning(
+            "RapidAPI calendar selected but RAPIDAPI_CALENDAR_KEY is missing; "
+            "falling back to ForexFactory"
+        )
+        return forexfactory_provider
+
+    if settings.calendar_cache_ttl_minutes < 1440:
+        logger.warning(
+            "RapidAPI calendar selected with a cache TTL under 24h; "
+            "this can exhaust the free monthly quota"
+        )
+
+    rapidapi_provider = RapidApiCalendarProvider(settings, http_client)
+    return FallbackCalendarProvider(primary=rapidapi_provider, fallback=forexfactory_provider)
+
+
 @asynccontextmanager
 async def init_container() -> AsyncIterator[Container]:
     logger.info("Initializing container...")
@@ -167,7 +194,7 @@ async def init_container() -> AsyncIterator[Container]:
         http2=True,
     )
 
-    provider = ForexFactoryCalendarProvider(settings, http_client)
+    provider = _build_event_provider(settings, http_client)
     analyzer = OpenRouterAnalyzer(settings, http_client)
 
     # SECURITY: Fail fast if no secret key in production

@@ -1,7 +1,13 @@
 from .ai import OpenRouterAnalyzer
-from .providers import ForexFactoryCalendarProvider
+from .providers import (
+    FallbackCalendarProvider,
+    ForexFactoryCalendarProvider,
+    RapidApiCalendarProvider,
+)
 
 __all__ = [
+    "FallbackCalendarProvider",
     "ForexFactoryCalendarProvider",
     "OpenRouterAnalyzer",
+    "RapidApiCalendarProvider",
 ]
