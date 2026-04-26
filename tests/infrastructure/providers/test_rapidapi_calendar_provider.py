@@ -23,7 +23,7 @@ def make_settings(**overrides) -> Settings:
         "rapidapi_calendar_key": "rapid-key",
         "rapidapi_calendar_host": "economic-calendar-api.p.rapidapi.com",
         "rapidapi_calendar_url": "https://economic-calendar-api.p.rapidapi.com/calendar",
-        "rapidapi_calendar_timezone": "UTC",
+        "rapidapi_calendar_timezone": "GMT+0",
         "rapidapi_calendar_limit": 500,
     }
     defaults.update(overrides)
@@ -36,10 +36,11 @@ def test_parse_payload_maps_rapidapi_fields():
         "data": [
             {
                 "id": "nfp-20260427",
-                "title": "Non-Farm Payrolls",
+                "eventId": "ace93e5e-f249-452c-8c63-883ff2ee8732",
+                "name": "Non-Farm Payrolls",
                 "countryCode": "US",
-                "currency": "USD",
-                "date": "2026-04-27T12:30:00Z",
+                "currencyCode": "USD",
+                "dateUtc": "2026-04-27T12:30:00.000Z",
                 "volatility": "HIGH",
                 "actual": "225K",
                 "consensus": "180K",
@@ -78,8 +79,9 @@ async def test_fetch_events_in_range_sends_rapidapi_headers_and_params():
     _, kwargs = client.get.await_args
     assert kwargs["headers"]["X-RapidAPI-Key"] == "rapid-key"
     assert kwargs["headers"]["X-RapidAPI-Host"] == settings.rapidapi_calendar_host
-    assert kwargs["params"]["startDate"] == "2026-04-27"
-    assert kwargs["params"]["endDate"] == "2026-05-03"
+    assert "startDate" not in kwargs["params"]
+    assert "endDate" not in kwargs["params"]
+    assert kwargs["params"]["timezone"] == "GMT+0"
     assert kwargs["params"]["limit"] == 500
 
 

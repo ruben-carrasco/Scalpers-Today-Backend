@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     rapidapi_calendar_key: str = Field(default="", description="RapidAPI economic calendar key")
     rapidapi_calendar_host: str = "economic-calendar-api.p.rapidapi.com"
     rapidapi_calendar_url: str = "https://economic-calendar-api.p.rapidapi.com/calendar"
-    rapidapi_calendar_timezone: str = "UTC"
+    rapidapi_calendar_timezone: str = "GMT+0"
     rapidapi_calendar_limit: int = 500
 
     database_path: str = Field(

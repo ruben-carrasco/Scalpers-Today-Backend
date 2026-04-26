@@ -45,8 +45,6 @@ class RapidApiCalendarProvider(IEventProvider):
                     "Accept": "application/json",
                 },
                 params={
-                    "startDate": start_date.isoformat(),
-                    "endDate": end_date.isoformat(),
                     "timezone": self._settings.rapidapi_calendar_timezone,
                     "limit": self._settings.rapidapi_calendar_limit,
                 },
@@ -114,8 +112,10 @@ class RapidApiCalendarProvider(IEventProvider):
         if event_date < start_date or event_date > end_date:
             return None
 
-        currency = self._first_text(row, "currency", "currencyCode", "countryCode", "country")
-        country = self._first_text(row, "country", "countryCode", "currency") or currency
+        currency = self._first_text(row, "currencyCode", "currency", "countryCode", "country")
+        country = (
+            self._first_text(row, "countryCode", "country", "currencyCode", "currency") or currency
+        )
         actual = self._data_value(self._first_value(row, "actual", "actualValue"))
         forecast = self._data_value(
             self._first_value(row, "forecast", "consensus", "estimate", "expected")
@@ -141,7 +141,7 @@ class RapidApiCalendarProvider(IEventProvider):
         )
 
     def _extract_datetime(self, row: dict[str, Any]) -> Optional[datetime]:
-        raw_value = self._first_value(row, "date", "datetime", "timestamp", "time")
+        raw_value = self._first_value(row, "dateUtc", "date", "datetime", "timestamp", "time")
         parsed = self._parse_datetime(raw_value)
         if parsed is not None:
             return parsed
