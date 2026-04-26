@@ -54,7 +54,9 @@ def upgrade() -> None:
     op.create_index("idx_date_importance", "economic_events", ["date", "importance"], unique=False)
 
     if "ix_economic_events_importance" not in _index_names("economic_events"):
-        op.create_index("ix_economic_events_importance", "economic_events", ["importance"], unique=False)
+        op.create_index(
+            "ix_economic_events_importance", "economic_events", ["importance"], unique=False
+        )
 
 
 def downgrade() -> None:
@@ -85,4 +87,6 @@ def downgrade() -> None:
 
     op.create_index("idx_date_importance", "economic_events", ["date", "importancia"], unique=False)
     if "ix_economic_events_importancia" not in _index_names("economic_events"):
-        op.create_index("ix_economic_events_importancia", "economic_events", ["importancia"], unique=False)
+        op.create_index(
+            "ix_economic_events_importancia", "economic_events", ["importancia"], unique=False
+        )

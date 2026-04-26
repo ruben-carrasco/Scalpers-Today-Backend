@@ -23,7 +23,10 @@ class GetWeekEventsUseCase:
         self._end_date = end_date
 
     async def execute(self, force_refresh: bool = False) -> List[EconomicEvent]:
-        logger.info("Fetching week events", extra={"start_date": str(self._start_date), "end_date": str(self._end_date)})
+        logger.info(
+            "Fetching week events",
+            extra={"start_date": str(self._start_date), "end_date": str(self._end_date)},
+        )
 
         cached_events = await self._repository.get_events_in_range(self._start_date, self._end_date)
         if not force_refresh and cached_events:
@@ -34,7 +37,9 @@ class GetWeekEventsUseCase:
                 logger.info("Returning cached week events", extra={"count": len(cached_events)})
                 return cached_events
 
-        provider_events = await self._provider.fetch_events_in_range(self._start_date, self._end_date)
+        provider_events = await self._provider.fetch_events_in_range(
+            self._start_date, self._end_date
+        )
         if not provider_events:
             logger.warning("Week provider returned no events")
             return cached_events
@@ -48,6 +53,8 @@ class GetWeekEventsUseCase:
         for target_date, day_events in events_by_day.items():
             await self._repository.save_events_batch(day_events, target_date)
 
-        refreshed_events = await self._repository.get_events_in_range(self._start_date, self._end_date)
+        refreshed_events = await self._repository.get_events_in_range(
+            self._start_date, self._end_date
+        )
         logger.info("Returning refreshed week events", extra={"count": len(refreshed_events)})
         return refreshed_events

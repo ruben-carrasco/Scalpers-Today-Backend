@@ -54,6 +54,7 @@ def scheduler():
 
 # ── HIGH_IMPACT_EVENT ────────────────────────────────
 
+
 class TestHighImpactCondition:
     def test_matches_high_importance(self, scheduler):
         event = make_event(importance=Importance.HIGH)
@@ -72,6 +73,7 @@ class TestHighImpactCondition:
 
 
 # ── SPECIFIC_COUNTRY ────────────────────────────────
+
 
 class TestSpecificCountryCondition:
     def test_exact_match(self, scheduler):
@@ -97,6 +99,7 @@ class TestSpecificCountryCondition:
 
 # ── SPECIFIC_CURRENCY ───────────────────────────────
 
+
 class TestSpecificCurrencyCondition:
     def test_exact_match(self, scheduler):
         event = make_event(currency="USD")
@@ -115,6 +118,7 @@ class TestSpecificCurrencyCondition:
 
 
 # ── DATA_RELEASE ────────────────────────────────────
+
 
 class TestDataReleaseCondition:
     def test_matches_when_actual_has_value(self, scheduler):
@@ -135,6 +139,7 @@ class TestDataReleaseCondition:
 
 # ── SURPRISE_MOVE ───────────────────────────────────
 
+
 class TestSurpriseMoveCondition:
     def test_big_surprise_matches(self, scheduler):
         event = make_event(actual="2.0%", forecast="1.5%")
@@ -154,22 +159,27 @@ class TestSurpriseMoveCondition:
 
 # ── _alert_matches_event ────────────────────────────
 
+
 class TestAlertMatchesEvent:
     def test_any_condition_matches(self, scheduler):
         event = make_event(importance=Importance.LOW, country="US")
-        alert = make_alert([
-            AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None),
-            AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="US"),
-        ])
+        alert = make_alert(
+            [
+                AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None),
+                AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="US"),
+            ]
+        )
         # LOW importance fails HIGH_IMPACT but US country matches
         assert scheduler._alert_matches_event(alert, event) is True
 
     def test_no_condition_matches(self, scheduler):
         event = make_event(importance=Importance.LOW, country="US")
-        alert = make_alert([
-            AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None),
-            AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="Germany"),
-        ])
+        alert = make_alert(
+            [
+                AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None),
+                AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="Germany"),
+            ]
+        )
         assert scheduler._alert_matches_event(alert, event) is False
 
     def test_empty_conditions(self, scheduler):
@@ -179,6 +189,7 @@ class TestAlertMatchesEvent:
 
 
 # ── _parse_event_time ───────────────────────────────
+
 
 class TestParseEventTime:
     def test_valid_time(self, scheduler):
@@ -202,6 +213,7 @@ class TestParseEventTime:
 
 # ── _cleanup_notified_cache ─────────────────────────
 
+
 class TestCleanupCache:
     def test_clears_on_new_day(self, scheduler):
         scheduler._notified_events = {"evt-1": {"user-1"}}
@@ -222,6 +234,7 @@ class TestCleanupCache:
 
 
 # ── _parse_numeric ──────────────────────────────────
+
 
 class TestParseNumeric:
     def test_percentage(self, scheduler):

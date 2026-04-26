@@ -11,7 +11,5 @@ class IEventProvider(ABC):
         pass
 
     @abstractmethod
-    async def fetch_events_in_range(
-        self, start_date: date, end_date: date
-    ) -> List[EconomicEvent]:
+    async def fetch_events_in_range(self, start_date: date, end_date: date) -> List[EconomicEvent]:
         pass

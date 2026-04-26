@@ -37,9 +37,7 @@ class ForexFactoryCalendarProvider(IEventProvider):
         target_date = datetime.now(self.TZ_MADRID).date()
         return await self.fetch_events_in_range(target_date, target_date)
 
-    async def fetch_events_in_range(
-        self, start_date: date, end_date: date
-    ) -> list[EconomicEvent]:
+    async def fetch_events_in_range(self, start_date: date, end_date: date) -> list[EconomicEvent]:
         payload = await self._fetch_payload()
         if payload is None:
             return []
@@ -88,9 +86,7 @@ class ForexFactoryCalendarProvider(IEventProvider):
             )
         return None
 
-    def _parse_payload(
-        self, payload: Any, start_date: date, end_date: date
-    ) -> list[EconomicEvent]:
+    def _parse_payload(self, payload: Any, start_date: date, end_date: date) -> list[EconomicEvent]:
         if not isinstance(payload, list):
             return []
 

@@ -20,7 +20,9 @@ class EventRepository(IEventRepository):
         self._session = session
 
     async def get_cache_last_update(self, target_date: date) -> Optional[datetime]:
-        query = select(func.max(EventModel.updated_at)).where(*self._range_clause(target_date, target_date))
+        query = select(func.max(EventModel.updated_at)).where(
+            *self._range_clause(target_date, target_date)
+        )
         result = await self._session.execute(query)
         return result.scalar()
 
@@ -76,7 +78,9 @@ class EventRepository(IEventRepository):
         query = (
             select(EventModel)
             .where(*self._range_clause(start_date, end_date))
-            .order_by(EventModel.date, EventModel.time, EventModel.country, EventModel.importance.desc())
+            .order_by(
+                EventModel.date, EventModel.time, EventModel.country, EventModel.importance.desc()
+            )
         )
 
         result = await self._session.execute(query)

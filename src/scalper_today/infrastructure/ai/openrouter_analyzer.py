@@ -51,7 +51,9 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             results: Dict[str, AIAnalysis] = {}
             total_batches = (len(events) + self.BATCH_SIZE - 1) // self.BATCH_SIZE
 
-            logger.info(f"Starting quick analysis of {len(events)} events in {total_batches} batches")
+            logger.info(
+                f"Starting quick analysis of {len(events)} events in {total_batches} batches"
+            )
 
             for batch_idx in range(0, len(events), self.BATCH_SIZE):
                 batch = events[batch_idx : batch_idx + self.BATCH_SIZE]
@@ -308,17 +310,13 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             except ExternalServiceError:
                 raise
             except httpx.TimeoutException as e:
-                logger.warning(
-                    f"OpenRouter API timeout (attempt {attempt}/{self.MAX_RETRIES})"
-                )
+                logger.warning(f"OpenRouter API timeout (attempt {attempt}/{self.MAX_RETRIES})")
                 last_exception = e
             except KeyError as e:
                 logger.error(f"Unexpected API response structure: {e}")
                 raise ExternalServiceError("OpenRouter", f"Unexpected response: {e}")
             except Exception as e:
-                logger.warning(
-                    f"API call failed: {e} (attempt {attempt}/{self.MAX_RETRIES})"
-                )
+                logger.warning(f"API call failed: {e} (attempt {attempt}/{self.MAX_RETRIES})")
                 last_exception = e
 
             if attempt < self.MAX_RETRIES:

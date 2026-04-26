@@ -152,8 +152,22 @@ def test_greeting_night():
 def test_next_event_none_when_all_past():
     usecase = GetHomeSummaryUseCase()
     events = [
-        EconomicEvent(id="1", time="08:00", title="Past 1", country="US", currency="USD", importance=Importance.HIGH),
-        EconomicEvent(id="2", time="09:00", title="Past 2", country="EU", currency="EUR", importance=Importance.MEDIUM),
+        EconomicEvent(
+            id="1",
+            time="08:00",
+            title="Past 1",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="2",
+            time="09:00",
+            title="Past 2",
+            country="EU",
+            currency="EUR",
+            importance=Importance.MEDIUM,
+        ),
     ]
 
     result = usecase.find_next_upcoming(events, "22:00")
@@ -163,9 +177,30 @@ def test_next_event_none_when_all_past():
 def test_next_event_picks_first_upcoming():
     usecase = GetHomeSummaryUseCase()
     events = [
-        EconomicEvent(id="1", time="08:00", title="Past", country="US", currency="USD", importance=Importance.LOW),
-        EconomicEvent(id="2", time="14:00", title="Next", country="US", currency="USD", importance=Importance.HIGH),
-        EconomicEvent(id="3", time="16:00", title="Later", country="EU", currency="EUR", importance=Importance.HIGH),
+        EconomicEvent(
+            id="1",
+            time="08:00",
+            title="Past",
+            country="US",
+            currency="USD",
+            importance=Importance.LOW,
+        ),
+        EconomicEvent(
+            id="2",
+            time="14:00",
+            title="Next",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="3",
+            time="16:00",
+            title="Later",
+            country="EU",
+            currency="EUR",
+            importance=Importance.HIGH,
+        ),
     ]
 
     result = usecase.find_next_upcoming(events, "12:00")
@@ -176,9 +211,30 @@ def test_next_event_picks_first_upcoming():
 def test_highlights_fallback_to_medium():
     usecase = GetHomeSummaryUseCase()
     events = [
-        EconomicEvent(id="1", time="10:00", title="Med 1", country="US", currency="USD", importance=Importance.MEDIUM),
-        EconomicEvent(id="2", time="11:00", title="Med 2", country="EU", currency="EUR", importance=Importance.MEDIUM),
-        EconomicEvent(id="3", time="12:00", title="Low 1", country="UK", currency="GBP", importance=Importance.LOW),
+        EconomicEvent(
+            id="1",
+            time="10:00",
+            title="Med 1",
+            country="US",
+            currency="USD",
+            importance=Importance.MEDIUM,
+        ),
+        EconomicEvent(
+            id="2",
+            time="11:00",
+            title="Med 2",
+            country="EU",
+            currency="EUR",
+            importance=Importance.MEDIUM,
+        ),
+        EconomicEvent(
+            id="3",
+            time="12:00",
+            title="Low 1",
+            country="UK",
+            currency="GBP",
+            importance=Importance.LOW,
+        ),
     ]
 
     highlights = usecase.generate_highlights(events)
@@ -189,7 +245,14 @@ def test_highlights_fallback_to_medium():
 def test_highlights_max_three():
     usecase = GetHomeSummaryUseCase()
     events = [
-        EconomicEvent(id=str(i), time=f"1{i}:00", title=f"High {i}", country="US", currency="USD", importance=Importance.HIGH)
+        EconomicEvent(
+            id=str(i),
+            time=f"1{i}:00",
+            title=f"High {i}",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        )
         for i in range(5)
     ]
 

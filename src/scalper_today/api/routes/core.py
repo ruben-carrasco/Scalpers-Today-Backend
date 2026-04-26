@@ -37,7 +37,9 @@ async def health_check(c: ContainerDep) -> HealthCheckResponse:
     )
 
 
-@router.get("/health/live", tags=["System"], summary="Liveness Probe", response_model=StatusResponse)
+@router.get(
+    "/health/live", tags=["System"], summary="Liveness Probe", response_model=StatusResponse
+)
 async def liveness_probe() -> StatusResponse:
     return StatusResponse(status="alive")
 
