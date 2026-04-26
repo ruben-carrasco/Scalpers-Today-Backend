@@ -79,8 +79,8 @@ async def test_fetch_events_in_range_sends_rapidapi_headers_and_params():
     _, kwargs = client.get.await_args
     assert kwargs["headers"]["X-RapidAPI-Key"] == "rapid-key"
     assert kwargs["headers"]["X-RapidAPI-Host"] == settings.rapidapi_calendar_host
-    assert "startDate" not in kwargs["params"]
-    assert "endDate" not in kwargs["params"]
+    assert kwargs["params"]["startDate"] == "2026-04-27"
+    assert kwargs["params"]["endDate"] == "2026-05-03"
     assert kwargs["params"]["timezone"] == "GMT+0"
     assert kwargs["params"]["limit"] == 500
 

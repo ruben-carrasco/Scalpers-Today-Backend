@@ -45,6 +45,8 @@ class RapidApiCalendarProvider(IEventProvider):
                     "Accept": "application/json",
                 },
                 params={
+                    "startDate": start_date.isoformat(),
+                    "endDate": end_date.isoformat(),
                     "timezone": self._settings.rapidapi_calendar_timezone,
                     "limit": self._settings.rapidapi_calendar_limit,
                 },
