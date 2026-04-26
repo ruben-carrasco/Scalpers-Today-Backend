@@ -76,8 +76,8 @@ Ahí se inicializan:
 
 1. `GET /api/v1/macro` llama a `get_macro_events()`.
 2. El caso de uso consulta primero la base de datos para eventos de hoy.
-3. Si no hay datos válidos, usa `ForexFactoryCalendarProvider`.
-4. El provider descarga `ff_calendar_thisweek.json`, filtra por fecha actual en `Europe/Madrid` y normaliza a `EconomicEvent`.
+3. Si no hay datos válidos, usa el provider configurado en `EVENT_PROVIDER`.
+4. El provider descarga datos externos, filtra por fecha actual en `Europe/Madrid` y normaliza a `EconomicEvent`.
 5. El backend persiste eventos y expone el resultado a la app.
 
 ### 2. Briefing y análisis IA
@@ -95,16 +95,22 @@ Ahí se inicializan:
 
 ## Fuente de datos actual
 
-La fuente activa del calendario es `ForexFactory` a través del feed JSON semanal:
+La fuente activa del calendario se controla con `EVENT_PROVIDER`:
 
+- valor por defecto: `forexfactory`
+- alternativa: `rapidapi`
 - variable: `FOREXFACTORY_CALENDAR_URL`
 - valor por defecto: `https://nfs.faireconomy.media/ff_calendar_thisweek.json`
+- variables RapidAPI: `RAPIDAPI_CALENDAR_KEY`, `RAPIDAPI_CALENDAR_HOST`, `RAPIDAPI_CALENDAR_URL`
+- para planes gratuitos de 30 requests/mes, usar `CALENDAR_CACHE_TTL_MINUTES=10080` o superior;
+- el workflow `Refresh Events` se ejecuta lunes y jueves a las 05:15 UTC para evitar agotar la cuota gratuita;
+- si `rapidapi` no está configurado, no devuelve datos o falla, el backend usa ForexFactory como fallback.
 
 Importante:
 
 - actualmente el backend usa un **provider JSON**, no scraping HTML;
 - cada evento se normaliza al modelo interno `EconomicEvent`;
-- el campo `url` no apunta a una ficha individual de ForexFactory, sino a la fuente del feed utilizada por el provider.
+- el campo `url` apunta a la fuente del feed utilizada por el provider.
 
 ## Seguridad y protección
 
@@ -141,10 +147,15 @@ Archivo base: [.env.example](/Users/rubencarrascofrias/Documents/TFG/proyecto/.e
 - `OPENROUTER_API_KEY`
 - `JWT_SECRET_KEY`
 - `REFRESH_API_KEY`
+- `RAPIDAPI_CALENDAR_KEY` si `EVENT_PROVIDER=rapidapi`
 
 ### Importantes
 
+- `EVENT_PROVIDER`
+- `CALENDAR_CACHE_TTL_MINUTES`
 - `FOREXFACTORY_CALENDAR_URL`
+- `RAPIDAPI_CALENDAR_HOST`
+- `RAPIDAPI_CALENDAR_URL`
 - `DATABASE_PATH`
 - `APP_ENV`
 - `APP_DEBUG`

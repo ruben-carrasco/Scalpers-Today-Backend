@@ -24,7 +24,14 @@ class Settings(BaseSettings):
     openrouter_model: str = "google/gemini-2.5-flash"
 
     http_timeout_seconds: float = 90.0
+    event_provider: Literal["forexfactory", "rapidapi"] = "forexfactory"
+    calendar_cache_ttl_minutes: int = 5
     forexfactory_calendar_url: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    rapidapi_calendar_key: str = Field(default="", description="RapidAPI economic calendar key")
+    rapidapi_calendar_host: str = "economic-calendar-api.p.rapidapi.com"
+    rapidapi_calendar_url: str = "https://economic-calendar-api.p.rapidapi.com/calendar"
+    rapidapi_calendar_timezone: str = "GMT+0"
+    rapidapi_calendar_limit: int = 500
 
     database_path: str = Field(
         default="data/scalper_today.db", description="Path to SQLite database"

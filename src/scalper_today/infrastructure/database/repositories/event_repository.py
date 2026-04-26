@@ -12,12 +12,13 @@ from ..models import EventModel, DailyBriefingModel
 
 logger = logging.getLogger(__name__)
 
-CACHE_TTL_MINUTES = 5
+DEFAULT_CACHE_TTL_MINUTES = 5
 
 
 class EventRepository(IEventRepository):
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, cache_ttl_minutes: int = DEFAULT_CACHE_TTL_MINUTES):
         self._session = session
+        self._cache_ttl_minutes = cache_ttl_minutes
 
     async def get_cache_last_update(self, target_date: date) -> Optional[datetime]:
         query = select(func.max(EventModel.updated_at)).where(
@@ -43,20 +44,25 @@ class EventRepository(IEventRepository):
         last_update = await self.get_range_cache_last_update(start_date, end_date)
         return self._is_cache_timestamp_valid(last_update)
 
-    @staticmethod
-    def _is_cache_timestamp_valid(last_update: Optional[datetime]) -> bool:
+    def _is_cache_timestamp_valid(self, last_update: Optional[datetime]) -> bool:
         if last_update is None:
             return False
         now = datetime.now(timezone.utc)
         if last_update.tzinfo is None:
             now = now.replace(tzinfo=None)
 
-        age_minutes = (now - last_update).total_seconds() / 60
-        is_valid = age_minutes < CACHE_TTL_MINUTES
-
-        logger.info(
-            f"Cache age: {age_minutes:.1f} min, TTL: {CACHE_TTL_MINUTES} min, valid: {is_valid}"
+        return self._is_cache_timestamp_fresh(
+            last_update=last_update,
+            now=now,
+            ttl_minutes=self._cache_ttl_minutes,
         )
+
+    @staticmethod
+    def _is_cache_timestamp_fresh(last_update: datetime, now: datetime, ttl_minutes: int) -> bool:
+        age_minutes = (now - last_update).total_seconds() / 60
+        is_valid = age_minutes < ttl_minutes
+
+        logger.info(f"Cache age: {age_minutes:.1f} min, TTL: {ttl_minutes} min, valid: {is_valid}")
         return is_valid
 
     async def get_events_by_date(
