@@ -1,5 +1,11 @@
 from datetime import datetime
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
+from fastapi.testclient import TestClient
+
+from scalper_today.api.app import create_app
+from scalper_today.api.dependencies.container import get_container
 from scalper_today.api.schemas import WeekEventResponse
 from scalper_today.domain.entities import AIAnalysis, EconomicEvent, Importance
 
@@ -69,6 +75,55 @@ def test_week_event_response_accepts_impacted_assets_list():
     assert response.ai_analysis is not None
     assert response.ai_analysis.impacted_assets == ["NZD/USD"]
     assert response.event_date == "2026-04-26"
+
+
+def test_week_events_refresh_requires_api_key():
+    fake_container = SimpleNamespace(
+        settings=SimpleNamespace(refresh_api_key="secret"),
+        get_week_events=AsyncMock(return_value=[]),
+    )
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.post("/api/v1/events/week/refresh")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 403
+    fake_container.get_week_events.assert_not_awaited()
+
+
+def test_week_events_refresh_forces_provider_refresh():
+    event = EconomicEvent(
+        id="rapidapi-event",
+        time="10:00",
+        title="CPI",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=datetime(2026, 4, 26, 10, 0),
+    )
+    fake_container = SimpleNamespace(
+        settings=SimpleNamespace(refresh_api_key="secret"),
+        get_week_events=AsyncMock(return_value=[event]),
+    )
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.post(
+            "/api/v1/events/week/refresh",
+            headers={"X-API-Key": "secret"},
+        )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "message": "Refreshed 1 weekly events",
+        "count": 1,
+    }
+    fake_container.get_week_events.assert_awaited_once_with(force_refresh=True)
 
 
 def test_filtered_events_limit_exceeds_max(client):

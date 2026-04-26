@@ -196,6 +196,40 @@ async def get_week_events(c: ContainerDep) -> List[WeekEventResponse]:
     return [WeekEventResponse.from_domain(event) for event in events]
 
 
+@router.post(
+    "/events/week/refresh",
+    tags=["Mobile - Events"],
+    summary="Force Refresh Weekly Events",
+    description=(
+        "Forces a provider refresh and cache update for the current week. "
+        "Requires `X-API-Key` header."
+    ),
+    response_model=RefreshEventsResponse,
+    responses={
+        200: {"description": "Weekly events refreshed successfully."},
+        403: {"description": "Invalid or missing API key."},
+        429: {"description": "Too many refresh requests."},
+    },
+)
+async def refresh_week_events(
+    c: ContainerDep,
+    req: Request,
+    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
+) -> RefreshEventsResponse:
+    _check_refresh_rate_limit(req)
+    expected_key = c.settings.refresh_api_key
+    if not expected_key or api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+    logger.info("Force refreshing week events from source...")
+    events = await c.get_week_events(force_refresh=True)
+    return RefreshEventsResponse(
+        status="success",
+        message=f"Refreshed {len(events)} weekly events",
+        count=len(events),
+    )
+
+
 @router.get(
     "/events/by-importance/{importance}",
     tags=["Mobile - Events"],
