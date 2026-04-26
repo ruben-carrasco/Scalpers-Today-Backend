@@ -11,4 +11,6 @@ class AIAnalysisResponse(BaseModel):
     macro_context: Optional[str] = Field(None, description="Macroeconomic context")
     technical_levels: Optional[str] = Field(None, description="Key technical levels")
     trading_strategies: Optional[str] = Field(None, description="Recommended trading strategies")
-    impacted_assets: Optional[str] = Field(None, description="Assets likely to be impacted")
+    impacted_assets: Optional[str | list[str]] = Field(
+        None, description="Assets likely to be impacted"
+    )

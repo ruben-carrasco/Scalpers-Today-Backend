@@ -10,7 +10,7 @@ class AIAnalysis:
     macro_context: Optional[str] = None
     technical_levels: Optional[str] = None
     trading_strategies: Optional[str] = None
-    impacted_assets: Optional[str] = None
+    impacted_assets: Optional[str | list[str]] = None
     is_deep_analysis: bool = False
 
     @classmethod

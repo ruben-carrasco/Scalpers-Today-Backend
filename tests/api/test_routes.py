@@ -1,3 +1,9 @@
+from datetime import datetime
+
+from scalper_today.api.schemas import WeekEventResponse
+from scalper_today.domain.entities import AIAnalysis, EconomicEvent, Importance
+
+
 def test_health_check(client):
     response = client.get("/health")
     # Health checks the db, which will fail if DB doesn't exist, but it returns 200 with degraded status if not raise.
@@ -39,6 +45,30 @@ def test_filtered_events_default_pagination(client):
 def test_week_events_route_exists(client):
     response = client.get("/api/v1/events/week")
     assert response.status_code in [200, 500]
+
+
+def test_week_event_response_accepts_impacted_assets_list():
+    event = EconomicEvent(
+        id="event-with-analysis",
+        time="10:00",
+        title="CPI",
+        country="NZD",
+        currency="NZD",
+        importance=Importance.HIGH,
+        ai_analysis=AIAnalysis(
+            summary="Inflation scenario",
+            impact="HIGH",
+            sentiment="BULLISH",
+            impacted_assets=["NZD/USD"],
+        ),
+        _timestamp=datetime(2026, 4, 26, 10, 0),
+    )
+
+    response = WeekEventResponse.from_domain(event)
+
+    assert response.ai_analysis is not None
+    assert response.ai_analysis.impacted_assets == ["NZD/USD"]
+    assert response.event_date == "2026-04-26"
 
 
 def test_filtered_events_limit_exceeds_max(client):
