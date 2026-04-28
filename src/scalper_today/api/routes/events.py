@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import defaultdict
+from datetime import date
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security
@@ -40,6 +41,7 @@ ContainerDep = Annotated[Container, Depends(get_container)]
 _refresh_rate_limit_store: dict[str, list[float]] = defaultdict(list)
 REFRESH_RATE_LIMIT_MAX_ATTEMPTS = 10
 REFRESH_RATE_LIMIT_WINDOW_SECONDS = 60
+MAX_WEEK_RANGE_DAYS = 31
 
 
 def _get_client_ip(request: Request) -> str:
@@ -65,6 +67,32 @@ def _check_refresh_rate_limit(request: Request) -> None:
         raise HTTPException(status_code=429, detail="Too many refresh requests. Try again later.")
 
     _refresh_rate_limit_store[key].append(now)
+
+
+def _resolve_event_range(
+    start_date: Optional[date],
+    end_date: Optional[date],
+) -> tuple[Optional[date], Optional[date]]:
+    if start_date is None and end_date is None:
+        return None, None
+
+    if start_date is None or end_date is None:
+        raise HTTPException(
+            status_code=422, detail="startDate and endDate must be provided together"
+        )
+
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=422, detail="endDate must be greater than or equal to startDate"
+        )
+
+    range_days = (end_date - start_date).days + 1
+    if range_days > MAX_WEEK_RANGE_DAYS:
+        raise HTTPException(
+            status_code=422, detail=f"Date range cannot exceed {MAX_WEEK_RANGE_DAYS} days"
+        )
+
+    return start_date, end_date
 
 
 @router.get(
@@ -189,10 +217,19 @@ async def get_filtered_events(
     "/events/week",
     tags=["Mobile - Events"],
     summary="Weekly Events",
+    description=(
+        "Returns events for the current week by default. "
+        "Optionally accepts `startDate` and `endDate` in YYYY-MM-DD format."
+    ),
     response_model=List[WeekEventResponse],
 )
-async def get_week_events(c: ContainerDep) -> List[WeekEventResponse]:
-    events = await c.get_week_events()
+async def get_week_events(
+    c: ContainerDep,
+    start_date: Annotated[Optional[date], Query(alias="startDate")] = None,
+    end_date: Annotated[Optional[date], Query(alias="endDate")] = None,
+) -> List[WeekEventResponse]:
+    resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
+    events = await c.get_week_events(start_date=resolved_start, end_date=resolved_end)
     return [WeekEventResponse.from_domain(event) for event in events]
 
 
@@ -214,6 +251,8 @@ async def get_week_events(c: ContainerDep) -> List[WeekEventResponse]:
 async def refresh_week_events(
     c: ContainerDep,
     req: Request,
+    start_date: Annotated[Optional[date], Query(alias="startDate")] = None,
+    end_date: Annotated[Optional[date], Query(alias="endDate")] = None,
     api_key: Annotated[Optional[str], Security(api_key_header)] = None,
 ) -> RefreshEventsResponse:
     _check_refresh_rate_limit(req)
@@ -221,8 +260,13 @@ async def refresh_week_events(
     if not expected_key or api_key != expected_key:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
+    resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
     logger.info("Force refreshing week events from source...")
-    events = await c.get_week_events(force_refresh=True)
+    events = await c.get_week_events(
+        force_refresh=True,
+        start_date=resolved_start,
+        end_date=resolved_end,
+    )
     return RefreshEventsResponse(
         status="success",
         message=f"Refreshed {len(events)} weekly events",
