@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -117,3 +117,44 @@ async def test_fallback_provider_uses_secondary_when_primary_is_empty():
 
     assert events == [fallback_event]
     fallback.fetch_events_in_range.assert_awaited_once_with(date(2026, 4, 27), date(2026, 5, 3))
+
+
+@pytest.mark.asyncio
+async def test_fallback_provider_fills_missing_dates_when_primary_is_partial():
+    primary_event = EconomicEvent(
+        id="primary-monday",
+        time="10:00",
+        title="Primary CPI",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=datetime(2026, 4, 27, 10, 0),
+    )
+    fallback_monday = EconomicEvent(
+        id="fallback-monday",
+        time="11:00",
+        title="Fallback Monday",
+        country="US",
+        currency="USD",
+        importance=Importance.LOW,
+        _timestamp=datetime(2026, 4, 27, 11, 0),
+    )
+    fallback_tuesday = EconomicEvent(
+        id="fallback-tuesday",
+        time="12:00",
+        title="Fallback Tuesday",
+        country="US",
+        currency="USD",
+        importance=Importance.MEDIUM,
+        _timestamp=datetime(2026, 4, 28, 12, 0),
+    )
+    primary = MagicMock()
+    primary.fetch_events_in_range = AsyncMock(return_value=[primary_event])
+    fallback = MagicMock()
+    fallback.fetch_events_in_range = AsyncMock(return_value=[fallback_monday, fallback_tuesday])
+    provider = FallbackCalendarProvider(primary=primary, fallback=fallback)
+
+    events = await provider.fetch_events_in_range(date(2026, 4, 27), date(2026, 4, 28))
+
+    assert events == [primary_event, fallback_tuesday]
+    fallback.fetch_events_in_range.assert_awaited_once_with(date(2026, 4, 27), date(2026, 4, 28))
