@@ -14,6 +14,14 @@ from .exception_handlers import register_exception_handlers
 
 logger = logging.getLogger(__name__)
 
+API_KEY_PROTECTED_PATHS = {
+    "/api/v1/macro/refresh",
+    "/api/v1/events/week/refresh",
+}
+JWT_PROTECTED_PATHS = {
+    "/api/v1/auth/me",
+}
+
 
 def setup_logging() -> None:
     logging.basicConfig(
@@ -45,6 +53,7 @@ def custom_openapi(app: FastAPI) -> Dict[str, Any]:
         version=app.version,
         description=app.description,
         routes=app.routes,
+        tags=app.openapi_tags,
     )
 
     # Define security schemes used by the API.
@@ -65,13 +74,13 @@ def custom_openapi(app: FastAPI) -> Dict[str, Any]:
         for method in methods:
             operation = openapi_schema["paths"][path][method]
 
-            # Explicit API key protected operation
-            if path == "/api/v1/macro/refresh":
+            # Explicit API key protected operations.
+            if path in API_KEY_PROTECTED_PATHS:
                 operation["security"] = [{"ApiKeyAuth": []}]
                 continue
 
-            # JWT-protected operations
-            if path == "/api/v1/auth/me" or path.startswith("/api/v1/alerts"):
+            # JWT-protected operations.
+            if path in JWT_PROTECTED_PATHS or path.startswith("/api/v1/alerts"):
                 operation["security"] = [{"BearerAuth": []}]
                 continue
 
@@ -86,28 +95,52 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     tags_metadata = [
-        {"name": "Authentication", "description": "User registration and login operations."},
-        {"name": "Events", "description": "Economic calendar and macro data."},
+        {
+            "name": "System",
+            "description": "Health checks used by Azure, uptime monitors, and deployment probes.",
+        },
+        {
+            "name": "Authentication",
+            "description": "Public login/register endpoints and the JWT-protected current-user endpoint.",
+        },
+        {
+            "name": "Events",
+            "description": "Public macroeconomic calendar data normalized for the application.",
+        },
+        {
+            "name": "Briefing",
+            "description": "AI-generated daily market context derived from economic events.",
+        },
         {
             "name": "Mobile - Home",
-            "description": "Dashboard and daily briefing for the mobile app.",
+            "description": "Aggregated payloads optimized for the mobile home screen.",
         },
-        {"name": "Mobile - Events", "description": "Filtering and upcoming event lists."},
-        {"name": "Alerts", "description": "Custom user alerts and push notification tokens."},
-        {"name": "System", "description": "Health checks and operational endpoints."},
+        {
+            "name": "Mobile - Events",
+            "description": "Event lists, filters, date ranges, and mobile calendar views.",
+        },
+        {
+            "name": "Mobile - Config",
+            "description": "Configuration data consumed by the mobile application.",
+        },
+        {
+            "name": "Admin - Refresh",
+            "description": "Manual cache refresh endpoints. Requires the `X-API-Key` header.",
+        },
+        {
+            "name": "Alerts",
+            "description": "JWT-protected user alerts and push notification device tokens.",
+        },
     ]
 
     app = FastAPI(
         title="ScalperToday API",
         description=(
-            "### 📈 Professional Financial News & AI Analysis\n\n"
-            "This API powers the ScalperToday mobile application, providing real-time "
-            "economic data enriched with institutional-grade AI analysis.\n\n"
-            "**Core Capabilities:**\n"
-            "* **AI Briefing**: Daily market outlook based on high-impact events.\n"
-            "* **Sentiment Analysis**: Automatic bullish/bearish detection.\n"
-            "* **Push Alerts**: Real-time notifications before market-moving news.\n"
-            "* **Clean Architecture**: Built for stability and institutional scaling."
+            "Backend API for the ScalperToday mobile app.\n\n"
+            "It normalizes economic calendar data from external providers, stores a short-lived "
+            "cache, exposes AI-generated market context, and manages user alerts.\n\n"
+            "Authentication uses JWT Bearer tokens for user resources. Manual refresh operations "
+            "use the `X-API-Key` header and are shown with a separate Swagger lock."
         ),
         version=settings.app_version,
         lifespan=lifespan,
