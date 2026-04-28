@@ -105,9 +105,18 @@ class Container:
             )
             return await use_case.execute(force_refresh=force_refresh)
 
-    async def get_week_events(self, force_refresh: bool = False) -> List[EconomicEvent]:
+    async def get_week_events(
+        self,
+        force_refresh: bool = False,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+    ) -> List[EconomicEvent]:
         madrid_date = datetime.now(TZ_MADRID).date()
-        week_start, week_end = _current_week_range(madrid_date)
+        week_start, week_end = (
+            (start_date, end_date)
+            if start_date is not None and end_date is not None
+            else _current_week_range(madrid_date)
+        )
         async with self.database_manager.session() as session:
             repository = self.get_event_repository(session)
             use_case = GetWeekEventsUseCase(

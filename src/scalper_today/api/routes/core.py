@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 
 from scalper_today.api.dependencies import Container, get_container
-from ..schemas import HealthCheckResponse, StatusResponse, ReadinessResponse
+from ..schemas import ErrorResponse, HealthCheckResponse, StatusResponse, ReadinessResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -13,7 +13,17 @@ router = APIRouter()
 ContainerDep = Annotated[Container, Depends(get_container)]
 
 
-@router.get("/health", tags=["System"], summary="Health Check", response_model=HealthCheckResponse)
+@router.get(
+    "/health",
+    tags=["System"],
+    summary="Service health overview",
+    description=(
+        "Returns the API version, deployment environment, database status, and AI configuration "
+        "status. Intended for dashboards and manual diagnostics."
+    ),
+    response_model=HealthCheckResponse,
+    responses={200: {"description": "Health status returned successfully."}},
+)
 async def health_check(c: ContainerDep) -> HealthCheckResponse:
     database_status = "unknown"
     ai_service_status = "configured" if c.settings.is_ai_configured else "not_configured"
@@ -38,14 +48,27 @@ async def health_check(c: ContainerDep) -> HealthCheckResponse:
 
 
 @router.get(
-    "/health/live", tags=["System"], summary="Liveness Probe", response_model=StatusResponse
+    "/health/live",
+    tags=["System"],
+    summary="Liveness probe",
+    description="Lightweight probe that confirms the process is running.",
+    response_model=StatusResponse,
+    responses={200: {"description": "Application process is alive."}},
 )
 async def liveness_probe() -> StatusResponse:
     return StatusResponse(status="alive")
 
 
 @router.get(
-    "/health/ready", tags=["System"], summary="Readiness Probe", response_model=ReadinessResponse
+    "/health/ready",
+    tags=["System"],
+    summary="Readiness probe",
+    description="Checks whether required dependencies are ready to serve traffic.",
+    response_model=ReadinessResponse,
+    responses={
+        200: {"description": "Application is ready to serve traffic."},
+        503: {"model": ErrorResponse, "description": "A required dependency is not ready."},
+    },
 )
 async def readiness_probe(c: ContainerDep) -> ReadinessResponse:
     is_ready = True

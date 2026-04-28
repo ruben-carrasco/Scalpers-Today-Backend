@@ -53,6 +53,44 @@ def test_week_events_route_exists(client):
     assert response.status_code in [200, 500]
 
 
+def test_week_events_accepts_date_range_params():
+    event = EconomicEvent(
+        id="custom-range-event",
+        time="10:00",
+        title="CPI",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=datetime(2026, 4, 29, 10, 0),
+    )
+    fake_container = SimpleNamespace(get_week_events=AsyncMock(return_value=[event]))
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.get("/api/v1/events/week?startDate=2026-04-29&endDate=2026-05-01")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    fake_container.get_week_events.assert_awaited_once_with(
+        start_date=datetime(2026, 4, 29).date(),
+        end_date=datetime(2026, 5, 1).date(),
+    )
+
+
+def test_week_events_requires_complete_date_range():
+    fake_container = SimpleNamespace(get_week_events=AsyncMock(return_value=[]))
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.get("/api/v1/events/week?startDate=2026-04-29")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 422
+    fake_container.get_week_events.assert_not_awaited()
+
+
 def test_week_event_response_accepts_impacted_assets_list():
     event = EconomicEvent(
         id="event-with-analysis",
@@ -123,7 +161,43 @@ def test_week_events_refresh_forces_provider_refresh():
         "message": "Refreshed 1 weekly events",
         "count": 1,
     }
-    fake_container.get_week_events.assert_awaited_once_with(force_refresh=True)
+    fake_container.get_week_events.assert_awaited_once_with(
+        force_refresh=True,
+        start_date=None,
+        end_date=None,
+    )
+
+
+def test_week_events_refresh_accepts_date_range_params():
+    event = EconomicEvent(
+        id="rapidapi-event",
+        time="10:00",
+        title="CPI",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=datetime(2026, 4, 29, 10, 0),
+    )
+    fake_container = SimpleNamespace(
+        settings=SimpleNamespace(refresh_api_key="secret"),
+        get_week_events=AsyncMock(return_value=[event]),
+    )
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.post(
+            "/api/v1/events/week/refresh?startDate=2026-04-29&endDate=2026-05-01",
+            headers={"X-API-Key": "secret"},
+        )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    fake_container.get_week_events.assert_awaited_once_with(
+        force_refresh=True,
+        start_date=datetime(2026, 4, 29).date(),
+        end_date=datetime(2026, 5, 1).date(),
+    )
 
 
 def test_filtered_events_limit_exceeds_max(client):
