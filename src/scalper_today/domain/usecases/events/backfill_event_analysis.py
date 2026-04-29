@@ -2,10 +2,10 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
-from typing import List
 
 from scalper_today.domain.entities import AIAnalysis, EconomicEvent
 from scalper_today.domain.interfaces import IAIAnalyzer, IEventRepository
+
 from .cache_key_generator import CacheKeyGenerator
 from .event_ordering import sort_events
 
@@ -51,8 +51,8 @@ class BackfillEventAnalysisUseCase:
         quick_missing = [event for event in events if event.ai_analysis is None]
         quick_saved_events = await self._backfill_quick(quick_missing)
 
-        deep_missing: List[EconomicEvent] = []
-        deep_saved_events: List[EconomicEvent] = []
+        deep_missing: list[EconomicEvent] = []
+        deep_saved_events: list[EconomicEvent] = []
         if include_deep:
             deep_missing = [
                 event
@@ -70,7 +70,7 @@ class BackfillEventAnalysisUseCase:
             deep_saved=len(deep_saved_events),
         )
 
-    async def _backfill_quick(self, events: List[EconomicEvent]) -> List[EconomicEvent]:
+    async def _backfill_quick(self, events: list[EconomicEvent]) -> list[EconomicEvent]:
         if not events:
             return []
 
@@ -79,7 +79,7 @@ class BackfillEventAnalysisUseCase:
         await self._save_events_by_date(saved_events)
         return saved_events
 
-    async def _backfill_deep(self, events: List[EconomicEvent]) -> List[EconomicEvent]:
+    async def _backfill_deep(self, events: list[EconomicEvent]) -> list[EconomicEvent]:
         if not events:
             return []
 
@@ -90,8 +90,8 @@ class BackfillEventAnalysisUseCase:
 
     @staticmethod
     def _apply_analysis_results(
-        events: List[EconomicEvent], results: dict[str, AIAnalysis]
-    ) -> List[EconomicEvent]:
+        events: list[EconomicEvent], results: dict[str, AIAnalysis]
+    ) -> list[EconomicEvent]:
         saved_events = []
         for event in events:
             key = CacheKeyGenerator.for_event(event)
@@ -101,7 +101,7 @@ class BackfillEventAnalysisUseCase:
             saved_events.append(event)
         return saved_events
 
-    async def _save_events_by_date(self, events: List[EconomicEvent]) -> None:
+    async def _save_events_by_date(self, events: list[EconomicEvent]) -> None:
         events_by_date: dict[date, list[EconomicEvent]] = defaultdict(list)
         for event in events:
             target_date = event._timestamp.date() if event._timestamp else self._start_date

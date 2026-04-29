@@ -1,8 +1,14 @@
-import pytest
 from unittest.mock import AsyncMock
 
-from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertType, AlertStatus
+import pytest
+
 from scalper_today.domain.dtos import CreateAlertRequest, UpdateAlertRequest
+from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertStatus, AlertType
+from scalper_today.domain.exceptions import (
+    PermissionDeniedError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from scalper_today.domain.usecases.alerts import (
     CreateAlertUseCase,
     DeleteAlertUseCase,
@@ -72,7 +78,7 @@ class TestCreateAlert:
             name="Empty Alert",
             conditions=[],
         )
-        with pytest.raises(ValueError, match="At least one condition"):
+        with pytest.raises(ValidationError, match="At least one condition"):
             await use_case.execute(request)
 
     @pytest.mark.asyncio
@@ -83,7 +89,7 @@ class TestCreateAlert:
             name="   ",
             conditions=[{"alert_type": "high_impact_event"}],
         )
-        with pytest.raises(ValueError, match="name is required"):
+        with pytest.raises(ValidationError, match="name is required"):
             await use_case.execute(request)
 
     @pytest.mark.asyncio
@@ -94,7 +100,7 @@ class TestCreateAlert:
             name="A" * 201,
             conditions=[{"alert_type": "high_impact_event"}],
         )
-        with pytest.raises(ValueError, match="200 characters"):
+        with pytest.raises(ValidationError, match="200 characters"):
             await use_case.execute(request)
 
     @pytest.mark.asyncio
@@ -105,7 +111,7 @@ class TestCreateAlert:
             name="Bad Alert",
             conditions=[{"alert_type": "specific_country"}],
         )
-        with pytest.raises(ValueError, match="Value required"):
+        with pytest.raises(ValidationError, match="Value required"):
             await use_case.execute(request)
 
     @pytest.mark.asyncio
@@ -150,7 +156,7 @@ class TestDeleteAlert:
         mock_repo.get_by_id.return_value = alert
 
         use_case = DeleteAlertUseCase(mock_repo)
-        with pytest.raises(PermissionError, match="permission"):
+        with pytest.raises(PermissionDeniedError, match="permission"):
             await use_case.execute("alert-1", "user-2")
 
     @pytest.mark.asyncio
@@ -158,7 +164,7 @@ class TestDeleteAlert:
         mock_repo.get_by_id.return_value = None
 
         use_case = DeleteAlertUseCase(mock_repo)
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             await use_case.execute("nonexistent", "user-1")
 
 
@@ -213,7 +219,7 @@ class TestUpdateAlert:
             user_id="user-1",
             name="",
         )
-        with pytest.raises(ValueError, match="cannot be empty"):
+        with pytest.raises(ValidationError, match="cannot be empty"):
             await use_case.execute(request)
 
     @pytest.mark.asyncio
@@ -227,7 +233,7 @@ class TestUpdateAlert:
             user_id="user-2",
             name="Hacked",
         )
-        with pytest.raises(PermissionError, match="permission"):
+        with pytest.raises(PermissionDeniedError, match="permission"):
             await use_case.execute(request)
 
     @pytest.mark.asyncio
@@ -255,5 +261,5 @@ class TestUpdateAlert:
             user_id="user-1",
             name="Whatever",
         )
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             await use_case.execute(request)

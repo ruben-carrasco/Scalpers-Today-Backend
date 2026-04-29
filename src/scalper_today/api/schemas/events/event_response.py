@@ -1,5 +1,5 @@
-from typing import Optional
 from pydantic import BaseModel, Field
+
 from .ai_analysis_response import AIAnalysisResponse
 
 
@@ -38,4 +38,4 @@ class EventResponse(BaseModel):
     forecast: str = Field("", description="Forecast value")
     previous: str = Field("", description="Previous value")
     surprise: str = Field("neutral", description="Surprise type (positive, negative, neutral)")
-    ai_analysis: Optional[AIAnalysisResponse] = Field(None, description="AI-generated analysis")
+    ai_analysis: AIAnalysisResponse | None = Field(None, description="AI-generated analysis")

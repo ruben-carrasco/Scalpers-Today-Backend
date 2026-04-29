@@ -1,24 +1,24 @@
-from .auth import (
-    User,
-    UserPreferences,
-    AuthToken,
-    Language,
-    Currency,
-    Timezone,
-)
-from .events import (
-    EconomicEvent,
-    Importance,
-    AIAnalysis,
-    DailyBriefing,
-    BriefingStats,
-)
 from .alerts import (
     Alert,
     AlertCondition,
     AlertStatus,
     AlertType,
     DeviceToken,
+)
+from .auth import (
+    AuthToken,
+    Currency,
+    Language,
+    Timezone,
+    User,
+    UserPreferences,
+)
+from .events import (
+    AIAnalysis,
+    BriefingStats,
+    DailyBriefing,
+    EconomicEvent,
+    Importance,
 )
 from .home import HomeSummary
 

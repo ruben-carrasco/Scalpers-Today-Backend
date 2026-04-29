@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from scalper_today.domain.entities import Alert
 
@@ -10,11 +9,11 @@ class IAlertRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, alert_id: str) -> Optional[Alert]:
+    async def get_by_id(self, alert_id: str) -> Alert | None:
         pass
 
     @abstractmethod
-    async def get_by_user_id(self, user_id: str, include_deleted: bool = False) -> List[Alert]:
+    async def get_by_user_id(self, user_id: str, include_deleted: bool = False) -> list[Alert]:
         pass
 
     @abstractmethod

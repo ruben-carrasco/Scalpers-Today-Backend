@@ -1,13 +1,12 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from ...domain.entities import User, AuthToken
+from ...domain.entities import AuthToken, User
 from ...domain.interfaces import IAuthService
 
 logger = logging.getLogger(__name__)
@@ -31,14 +30,14 @@ class JWTService(IAuthService):
         )
 
     def create_access_token(self, user: User) -> AuthToken:
-        expire = datetime.now(timezone.utc) + timedelta(days=self.token_expire_days)
+        expire = datetime.now(UTC) + timedelta(days=self.token_expire_days)
 
         payload = {
             "sub": user.id,  # Subject (user ID)
             "email": user.email,
             "name": user.name,
             "exp": expire,  # Expiration time
-            "iat": datetime.now(timezone.utc),  # Issued at
+            "iat": datetime.now(UTC),  # Issued at
             "jti": str(uuid.uuid4()),  # JWT ID (unique identifier)
         }
 
@@ -52,7 +51,7 @@ class JWTService(IAuthService):
             expires_in=self.token_expire_days * 24 * 60 * 60,
         )
 
-    def verify_token(self, token: str) -> Optional[dict]:
+    def verify_token(self, token: str) -> dict | None:
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             return payload
@@ -60,7 +59,7 @@ class JWTService(IAuthService):
             logger.warning(f"Token verification failed: {str(e)}")
             return None
 
-    def get_user_id_from_token(self, token: str) -> Optional[str]:
+    def get_user_id_from_token(self, token: str) -> str | None:
         payload = self.verify_token(token)
         if payload:
             return payload.get("sub")

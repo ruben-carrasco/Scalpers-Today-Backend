@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -7,10 +6,10 @@ class AIAnalysis:
     summary: str = "Analysis pending..."
     impact: str = "N/A"
     sentiment: str = "NEUTRAL"
-    macro_context: Optional[str] = None
-    technical_levels: Optional[str] = None
-    trading_strategies: Optional[str] = None
-    impacted_assets: Optional[str | list[str]] = None
+    macro_context: str | None = None
+    technical_levels: str | None = None
+    trading_strategies: str | None = None
+    impacted_assets: str | list[str] | None = None
     is_deep_analysis: bool = False
 
     @classmethod

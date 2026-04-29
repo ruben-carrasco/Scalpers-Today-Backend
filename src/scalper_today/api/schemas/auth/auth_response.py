@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-from .user_response import UserResponse
 from .token_response import TokenResponse
+from .user_response import UserResponse
 
 
 class AuthResponse(BaseModel):

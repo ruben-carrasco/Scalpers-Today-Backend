@@ -1,11 +1,9 @@
 from datetime import datetime
+
 import pytz
 
+from scalper_today.domain.entities import BriefingStats, DailyBriefing, EconomicEvent, Importance
 from scalper_today.domain.usecases import GetHomeSummaryUseCase
-from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.entities import Importance
-from scalper_today.domain.entities import DailyBriefing
-from scalper_today.domain.entities import BriefingStats
 
 
 def test_get_greeting():

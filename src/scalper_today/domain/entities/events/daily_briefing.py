@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import List
 
 from .briefing_stats import BriefingStats
 
@@ -7,10 +6,10 @@ from .briefing_stats import BriefingStats
 @dataclass
 class DailyBriefing:
     general_outlook: str
-    impacted_assets: List[str]
-    cautionary_hours: List[str]
+    impacted_assets: list[str]
+    cautionary_hours: list[str]
     statistics: BriefingStats = field(default_factory=BriefingStats)
-    key_themes: List[str] = field(default_factory=list)
+    key_themes: list[str] = field(default_factory=list)
 
     @classmethod
     def empty_day(cls, total_events: int = 0) -> "DailyBriefing":

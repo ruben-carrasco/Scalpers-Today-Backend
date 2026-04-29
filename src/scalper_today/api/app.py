@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,9 +8,10 @@ from fastapi.openapi.utils import get_openapi
 
 from scalper_today.api.dependencies import init_container
 from scalper_today.config import get_settings
+
+from .exception_handlers import register_exception_handlers
 from .routes.core import router as core_router
 from .routes.events import router as events_router
-from .exception_handlers import register_exception_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ async def lifespan(app: FastAPI):
     logger.info("👋 Shutdown complete")
 
 
-def custom_openapi(app: FastAPI) -> Dict[str, Any]:
+def custom_openapi(app: FastAPI) -> dict[str, Any]:
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -175,7 +176,7 @@ def create_app() -> FastAPI:
     app.include_router(core_router, prefix="/api/v1")
     app.include_router(events_router, prefix="/api/v1")
 
-    from .routes import auth, alerts
+    from .routes import alerts, auth
 
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(alerts.router, prefix="/api/v1")

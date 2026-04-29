@@ -1,5 +1,4 @@
-from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.entities import Importance
+from scalper_today.domain.entities import EconomicEvent, Importance
 
 
 def test_economic_event_properties():

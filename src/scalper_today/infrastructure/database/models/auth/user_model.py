@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-from sqlalchemy import String, DateTime, Text, Boolean, Index
+from sqlalchemy import Boolean, DateTime, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -19,7 +18,7 @@ class UserModel(Base):
 
     # Profile
     name: Mapped[str] = mapped_column(String(100))
-    avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Preferences (stored as JSON string)
     preferences: Mapped[str] = mapped_column(
@@ -31,13 +30,11 @@ class UserModel(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Index for active users lookup

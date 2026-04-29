@@ -1,10 +1,10 @@
 import logging
 from collections import defaultdict
 from datetime import date
-from typing import List
 
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IEventProvider, IEventRepository
+
 from .event_ordering import sort_events
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class GetWeekEventsUseCase:
         self._start_date = start_date
         self._end_date = end_date
 
-    async def execute(self, force_refresh: bool = False) -> List[EconomicEvent]:
+    async def execute(self, force_refresh: bool = False) -> list[EconomicEvent]:
         logger.info(
             "Fetching week events",
             extra={"start_date": str(self._start_date), "end_date": str(self._end_date)},

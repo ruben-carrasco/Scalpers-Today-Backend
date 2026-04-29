@@ -1,8 +1,7 @@
 import logging
-from typing import List
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....domain.entities import DeviceToken
@@ -27,7 +26,7 @@ class DeviceTokenRepository(IDeviceTokenRepository):
             existing.device_type = device_token.device_type
             existing.device_name = device_token.device_name
             existing.is_active = True
-            existing.last_used_at = datetime.now(timezone.utc)
+            existing.last_used_at = datetime.now(UTC)
             await self.session.flush()
             await self.session.refresh(existing)
             logger.info(f"Updated device token for user {device_token.user_id}")
@@ -51,7 +50,7 @@ class DeviceTokenRepository(IDeviceTokenRepository):
         logger.info(f"Created device token for user {device_token.user_id}")
         return self._to_entity(token_model)
 
-    async def get_by_user_id(self, user_id: str, active_only: bool = True) -> List[DeviceToken]:
+    async def get_by_user_id(self, user_id: str, active_only: bool = True) -> list[DeviceToken]:
         stmt = None
         result = None
         token_models = None

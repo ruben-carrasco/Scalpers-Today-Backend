@@ -1,4 +1,5 @@
 import uvicorn
+
 from scalper_today.config import get_settings
 
 

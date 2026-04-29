@@ -1,11 +1,11 @@
 import logging
 from datetime import date, datetime
-from typing import List
 
 import pytz
 
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IAIAnalyzer, IEventProvider, IEventRepository
+
 from .cache_key_generator import CacheKeyGenerator
 from .event_ordering import sort_events
 
@@ -25,7 +25,7 @@ class GetMacroEventsUseCase:
         self._analyzer = analyzer
         self._target_date = target_date or datetime.now(pytz.timezone("Europe/Madrid")).date()
 
-    async def execute(self, force_refresh: bool = False) -> List[EconomicEvent]:
+    async def execute(self, force_refresh: bool = False) -> list[EconomicEvent]:
         logger.info(f"Fetching events for {self._target_date}")
 
         if not force_refresh:
@@ -63,8 +63,8 @@ class GetMacroEventsUseCase:
         return await self._complete_missing_analysis(all_events)
 
     async def _complete_missing_analysis(
-        self, events: List[EconomicEvent], include_deep: bool = True
-    ) -> List[EconomicEvent]:
+        self, events: list[EconomicEvent], include_deep: bool = True
+    ) -> list[EconomicEvent]:
         if not events:
             return []
 

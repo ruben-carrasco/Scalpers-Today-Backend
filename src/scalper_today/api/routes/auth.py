@@ -4,26 +4,31 @@ from collections import defaultdict
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from ..schemas import (
-    RegisterRequest,
-    LoginRequest,
-    AuthResponse,
-    UserResponse,
-    TokenResponse,
-    ErrorResponse,
-    UserPreferencesResponse,
-)
-from scalper_today.domain.usecases import (
-    RegisterUserUseCase,
-    RegisterUserRequest as RegisterUserReq,
-    LoginUserUseCase,
-    LoginUserRequest as LoginUserReq,
-    GetCurrentUserUseCase,
-)
 from scalper_today.api.dependencies import Container, get_container
 from scalper_today.domain.entities import User
+from scalper_today.domain.usecases import (
+    GetCurrentUserUseCase,
+    LoginUserUseCase,
+    RegisterUserUseCase,
+)
+from scalper_today.domain.usecases import (
+    LoginUserRequest as LoginUserReq,
+)
+from scalper_today.domain.usecases import (
+    RegisterUserRequest as RegisterUserReq,
+)
+
+from ..schemas import (
+    AuthResponse,
+    ErrorResponse,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserPreferencesResponse,
+    UserResponse,
+)
 
 logger = logging.getLogger(__name__)
 

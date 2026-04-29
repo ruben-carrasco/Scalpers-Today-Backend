@@ -1,13 +1,12 @@
-import pytest
-from datetime import datetime, date
+from datetime import date, datetime
 from unittest.mock import AsyncMock
 
+import pytest
 import pytz
 
 from scalper_today.domain.entities import EconomicEvent, Importance
-from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertType, AlertStatus
+from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertStatus, AlertType
 from scalper_today.infrastructure.notifications.notification_scheduler import NotificationScheduler
-
 
 TZ_MADRID = pytz.timezone("Europe/Madrid")
 

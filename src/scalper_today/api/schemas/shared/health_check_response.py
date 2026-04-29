@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+
 from .health_checks_schema import HealthChecksSchema
 
 

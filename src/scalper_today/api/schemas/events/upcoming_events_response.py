@@ -1,5 +1,5 @@
-from typing import List
 from pydantic import BaseModel
+
 from .event_response import EventResponse
 
 
@@ -8,4 +8,4 @@ class UpcomingEventsResponse(BaseModel):
 
     current_time: str
     count: int
-    events: List[EventResponse]
+    events: list[EventResponse]

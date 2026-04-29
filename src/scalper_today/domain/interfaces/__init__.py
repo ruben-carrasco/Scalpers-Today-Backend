@@ -1,6 +1,6 @@
-from .auth import IUserRepository, IAuthService
-from .events import IEventRepository, IEventProvider, IAIAnalyzer
 from .alerts import IAlertRepository, IDeviceTokenRepository
+from .auth import IAuthService, IUserRepository
+from .events import IAIAnalyzer, IEventProvider, IEventRepository
 
 __all__ = [
     "IUserRepository",

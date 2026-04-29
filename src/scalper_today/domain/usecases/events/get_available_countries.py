@@ -1,11 +1,9 @@
-from typing import List
-
+from scalper_today.domain.dtos import AvailableCountriesResult, CountryInfo
 from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.dtos import CountryInfo, AvailableCountriesResult
 
 
 class GetAvailableCountriesUseCase:
-    def execute(self, events: List[EconomicEvent]) -> AvailableCountriesResult:
+    def execute(self, events: list[EconomicEvent]) -> AvailableCountriesResult:
         country_counts = {}
         for event in events:
             country = event.country

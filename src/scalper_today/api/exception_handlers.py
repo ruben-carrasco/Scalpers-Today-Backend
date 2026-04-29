@@ -1,19 +1,20 @@
 import logging
+
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from scalper_today.domain.exceptions import (
-    DomainException,
     AuthenticationError,
+    DomainException,
+    DuplicateEmailError,
     InvalidCredentialsError,
+    InvalidEmailError,
+    PermissionDeniedError,
+    ResourceNotFoundError,
     TokenExpiredError,
     TokenInvalidError,
     ValidationError,
-    InvalidEmailError,
     WeakPasswordError,
-    DuplicateEmailError,
-    ResourceNotFoundError,
-    PermissionDeniedError,
 )
 
 logger = logging.getLogger(__name__)

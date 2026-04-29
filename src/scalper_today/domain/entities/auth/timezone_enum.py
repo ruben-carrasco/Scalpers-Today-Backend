@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Timezone(str, Enum):
+class Timezone(StrEnum):
     UTC = "UTC"
     EUROPE_MADRID = "Europe/Madrid"
     AMERICA_NEW_YORK = "America/New_York"

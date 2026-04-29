@@ -1,9 +1,9 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from scalper_today.domain.entities import DeviceToken
 from scalper_today.domain.dtos import RegisterDeviceTokenRequest
+from scalper_today.domain.entities import DeviceToken
 from scalper_today.domain.interfaces import IDeviceTokenRepository
 
 logger = logging.getLogger(__name__)
@@ -35,8 +35,8 @@ class RegisterDeviceTokenUseCase:
             device_type=device_type,
             device_name=device_name,
             is_active=True,
-            created_at=datetime.now(timezone.utc),
-            last_used_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            last_used_at=datetime.now(UTC),
         )
 
         registered_token = await self.device_token_repository.create(device_token)

@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import pytz
@@ -43,8 +43,8 @@ class ForexFactoryCalendarProvider(IEventProvider):
             return []
         return self._parse_payload(payload, start_date, end_date)
 
-    async def _fetch_payload(self) -> Optional[Any]:
-        last_exception: Optional[Exception] = None
+    async def _fetch_payload(self) -> Any | None:
+        last_exception: Exception | None = None
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
                 response = await self._client.get(
@@ -112,7 +112,7 @@ class ForexFactoryCalendarProvider(IEventProvider):
 
     def _to_event(
         self, row: dict[str, Any], start_date: date, end_date: date
-    ) -> Optional[EconomicEvent]:
+    ) -> EconomicEvent | None:
         title = self._safe_text(row.get("title"))
         if not title:
             return None
@@ -152,7 +152,7 @@ class ForexFactoryCalendarProvider(IEventProvider):
             _timestamp=event_dt,
         )
 
-    def _extract_datetime(self, raw_value: Any) -> Optional[datetime]:
+    def _extract_datetime(self, raw_value: Any) -> datetime | None:
         text = self._safe_text(raw_value)
         if not text:
             return None
@@ -191,7 +191,7 @@ class ForexFactoryCalendarProvider(IEventProvider):
         return "neutral"
 
     @staticmethod
-    def _parse_number(raw: str) -> Optional[float]:
+    def _parse_number(raw: str) -> float | None:
         if not raw:
             return None
         text = raw.replace(",", "").replace(" ", "").strip().upper()

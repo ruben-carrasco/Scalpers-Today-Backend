@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 
 from scalper_today.api.dependencies import Container, get_container
-from ..schemas import ErrorResponse, HealthCheckResponse, StatusResponse, ReadinessResponse
+
+from ..schemas import ErrorResponse, HealthCheckResponse, ReadinessResponse, StatusResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
