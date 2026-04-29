@@ -7,12 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from scalper_today.api.dependencies import Container, get_container
-from scalper_today.domain.entities import User
+from scalper_today.domain.dtos.google_login import GoogleLoginRequest
 from scalper_today.domain.usecases import (
     GetCurrentUserUseCase,
     LoginUserUseCase,
     RegisterUserUseCase,
 )
+from scalper_today.domain.usecases.auth.google_login import GoogleLoginUseCase
 from scalper_today.domain.usecases import (
     LoginUserRequest as LoginUserReq,
 )
@@ -182,12 +183,6 @@ async def login(request: LoginRequest, container: ContainerDep, req: Request):
         )
 
 
-from scalper_today.domain.usecases.auth.google_login import GoogleLoginUseCase
-from scalper_today.domain.dtos.google_login import GoogleLoginRequest
-
-...
-
-
 @router.post(
     "/google",
     response_model=AuthResponse,
@@ -198,7 +193,7 @@ async def google_login(request: GoogleLoginRequest, container: ContainerDep, req
     _check_rate_limit(req, "google-login")
     async with container.database_manager.session() as session:
         user_repo = container.get_user_repository(session)
-        auth_service = container.get_auth_service()
+        auth_service = container.get_jwt_service()
         settings = container.settings
         use_case = GoogleLoginUseCase(user_repo, auth_service, settings)
 

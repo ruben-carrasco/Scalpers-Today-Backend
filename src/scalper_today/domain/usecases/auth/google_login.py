@@ -2,7 +2,6 @@ import logging
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from scalper_today.config import Settings
-from scalper_today.domain.entities import User, UserPreferences
 from scalper_today.domain.interfaces import IUserRepository, IAuthService
 from scalper_today.domain.exceptions import AuthenticationError
 
@@ -33,7 +32,7 @@ class GoogleLoginUseCase:
                 # Assign default preferences
                 user = await self.user_repository.create_from_oauth(email, name, provider="google")
 
-            token = self.auth_service.generate_token(user)
+            token = self.auth_service.create_access_token(user)
             return {"user": user, "token": token}
 
         except Exception as e:
