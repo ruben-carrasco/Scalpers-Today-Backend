@@ -1,3 +1,4 @@
+from .backfill_analysis_response import BackfillAnalysisResponse
 from .error_response import ErrorResponse
 from .health_check_response import HealthCheckResponse
 from .health_checks_schema import HealthChecksSchema
@@ -7,6 +8,7 @@ from .status_response import StatusResponse
 
 __all__ = [
     "ErrorResponse",
+    "BackfillAnalysisResponse",
     "HealthCheckResponse",
     "HealthChecksSchema",
     "ReadinessResponse",

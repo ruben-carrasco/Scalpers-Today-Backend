@@ -5,6 +5,8 @@ from .auth import (
     PasswordValidator,
 )
 from .events import (
+    BackfillEventAnalysisResult,
+    BackfillEventAnalysisUseCase,
     CacheKeyGenerator,
     GetMacroEventsUseCase,
     GetWeekEventsUseCase,
@@ -40,6 +42,8 @@ from scalper_today.domain.dtos import (
 
 __all__ = [
     "CacheKeyGenerator",
+    "BackfillEventAnalysisResult",
+    "BackfillEventAnalysisUseCase",
     "EventFilter",
     "EventFilterCriteria",
     "PasswordValidator",

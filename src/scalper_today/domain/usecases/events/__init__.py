@@ -4,8 +4,11 @@ from .get_upcoming_events import GetUpcomingEventsUseCase
 from .get_available_countries import GetAvailableCountriesUseCase
 from .event_filter import EventFilter
 from .cache_key_generator import CacheKeyGenerator
+from .backfill_event_analysis import BackfillEventAnalysisResult, BackfillEventAnalysisUseCase
 
 __all__ = [
+    "BackfillEventAnalysisResult",
+    "BackfillEventAnalysisUseCase",
     "CacheKeyGenerator",
     "GetMacroEventsUseCase",
     "GetWeekEventsUseCase",

@@ -24,6 +24,7 @@ from ..schemas import (
     ImportanceEventsResponse,
     UpcomingEventsResponse,
     AvailableCountriesResponse,
+    BackfillAnalysisResponse,
     RefreshEventsResponse,
     ErrorResponse,
     WelcomeSchema,
@@ -309,6 +310,67 @@ async def refresh_week_events(
         status="success",
         message=f"Refreshed {len(events)} weekly events",
         count=len(events),
+    )
+
+
+@router.post(
+    "/events/analysis/backfill",
+    tags=["Admin - Refresh"],
+    summary="Backfill missing AI analysis for stored events",
+    description=(
+        "Generates missing AI analysis for events already stored in the database. This endpoint "
+        "does not call the economic-calendar provider, so it does not consume RapidAPI quota. "
+        "By default it processes today's events and quick analysis only. Provide `startDate` and "
+        "`endDate` to process a custom range, and set `includeDeep=true` to also complete deep "
+        "analysis for high-impact events."
+    ),
+    response_model=BackfillAnalysisResponse,
+    responses={
+        200: {"description": "AI analysis backfill completed."},
+        403: {"model": ErrorResponse, "description": "Invalid or missing API key."},
+        422: {"model": ErrorResponse, "description": "Invalid or incomplete date range."},
+        429: {"model": ErrorResponse, "description": "Too many backfill requests."},
+    },
+)
+async def backfill_event_analysis(
+    c: ContainerDep,
+    req: Request,
+    start_date: Annotated[
+        Optional[date], Query(alias="startDate", description="Inclusive range start date.")
+    ] = None,
+    end_date: Annotated[
+        Optional[date], Query(alias="endDate", description="Inclusive range end date.")
+    ] = None,
+    include_deep: Annotated[
+        bool,
+        Query(
+            alias="includeDeep",
+            description="When true, also generate missing deep analysis for high-impact events.",
+        ),
+    ] = False,
+    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
+) -> BackfillAnalysisResponse:
+    _check_refresh_rate_limit(req)
+    expected_key = c.settings.refresh_api_key
+    if not expected_key or api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+    resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
+    result = await c.backfill_event_analysis(
+        start_date=resolved_start,
+        end_date=resolved_end,
+        include_deep=include_deep,
+    )
+
+    updated_count = result.quick_saved + result.deep_saved
+    return BackfillAnalysisResponse(
+        status="success",
+        message=f"Backfilled AI analysis for {updated_count} stored events",
+        total_events=result.total_events,
+        quick_requested=result.quick_requested,
+        quick_saved=result.quick_saved,
+        deep_requested=result.deep_requested,
+        deep_saved=result.deep_saved,
     )
 
 

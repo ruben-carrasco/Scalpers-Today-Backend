@@ -7,6 +7,7 @@ from .auth import (
     AuthResponse,
 )
 from .shared import (
+    BackfillAnalysisResponse,
     ErrorResponse,
     HealthCheckResponse,
     HealthChecksSchema,
@@ -50,6 +51,7 @@ __all__ = [
     "UserResponse",
     "AuthResponse",
     "ErrorResponse",
+    "BackfillAnalysisResponse",
     "AlertConditionSchema",
     "CreateAlertRequest",
     "UpdateAlertRequest",

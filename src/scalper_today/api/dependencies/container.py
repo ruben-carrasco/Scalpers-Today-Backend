@@ -18,6 +18,8 @@ from scalper_today.domain.interfaces import (
 )
 from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
 from scalper_today.domain.usecases import (
+    BackfillEventAnalysisResult,
+    BackfillEventAnalysisUseCase,
     GetDailyBriefingUseCase,
     GetHomeSummaryUseCase,
     GetMacroEventsUseCase,
@@ -147,6 +149,26 @@ class Container:
 
         use_case = GetHomeSummaryUseCase()
         return use_case.execute(events, briefing)
+
+    async def backfill_event_analysis(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        include_deep: bool = False,
+    ) -> BackfillEventAnalysisResult:
+        madrid_date = datetime.now(TZ_MADRID).date()
+        range_start = start_date or madrid_date
+        range_end = end_date or range_start
+
+        async with self.database_manager.session() as session:
+            repository = self.get_event_repository(session)
+            use_case = BackfillEventAnalysisUseCase(
+                repository=repository,
+                analyzer=self.analyzer,
+                start_date=range_start,
+                end_date=range_end,
+            )
+            return await use_case.execute(include_deep=include_deep)
 
     @classmethod
     def get_instance(cls) -> "Container":
