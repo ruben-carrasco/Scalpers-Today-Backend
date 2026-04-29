@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 from .country_info_schema import CountryInfoSchema

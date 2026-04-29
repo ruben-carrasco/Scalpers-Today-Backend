@@ -58,10 +58,13 @@ class TestAnalyzerRetry:
         client.post.side_effect = httpx.TimeoutException("timeout")
         analyzer = OpenRouterAnalyzer(settings, client)
 
-        with patch(
-            "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
-            new_callable=AsyncMock,
-        ), pytest.raises(ExternalServiceError):
+        with (
+            patch(
+                "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
+                new_callable=AsyncMock,
+            ),
+            pytest.raises(ExternalServiceError),
+        ):
             await analyzer._call_api("test prompt")
 
         assert client.post.call_count == 2
@@ -72,10 +75,13 @@ class TestAnalyzerRetry:
         client.post.return_value = make_response(401, text="Unauthorized")
         analyzer = OpenRouterAnalyzer(settings, client)
 
-        with patch(
-            "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
-            new_callable=AsyncMock,
-        ), pytest.raises(ExternalServiceError):
+        with (
+            patch(
+                "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
+                new_callable=AsyncMock,
+            ),
+            pytest.raises(ExternalServiceError),
+        ):
             await analyzer._call_api("test prompt")
 
         assert client.post.call_count == 1
@@ -106,10 +112,13 @@ class TestAnalyzerRetry:
         client.post.return_value = make_response(400, text="Bad Request")
         analyzer = OpenRouterAnalyzer(settings, client)
 
-        with patch(
-            "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
-            new_callable=AsyncMock,
-        ), pytest.raises(ExternalServiceError):
+        with (
+            patch(
+                "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
+                new_callable=AsyncMock,
+            ),
+            pytest.raises(ExternalServiceError),
+        ):
             await analyzer._call_api("test prompt")
 
         assert client.post.call_count == 1

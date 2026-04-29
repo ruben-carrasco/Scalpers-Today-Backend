@@ -1,4 +1,3 @@
-
 from scalper_today.domain.dtos import AvailableCountriesResult, CountryInfo
 from scalper_today.domain.entities import EconomicEvent
 

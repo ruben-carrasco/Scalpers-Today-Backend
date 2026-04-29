@@ -1,4 +1,3 @@
-
 from scalper_today.domain.dtos import EventFilterCriteria
 from scalper_today.domain.entities import EconomicEvent
 

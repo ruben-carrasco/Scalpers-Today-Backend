@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 from .alert_condition_schema import AlertConditionSchema

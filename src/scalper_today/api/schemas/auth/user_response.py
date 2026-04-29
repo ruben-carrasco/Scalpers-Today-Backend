@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 from .user_preferences_response import UserPreferencesResponse

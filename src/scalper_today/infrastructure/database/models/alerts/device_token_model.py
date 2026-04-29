@@ -24,12 +24,8 @@ class DeviceTokenModel(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC)
-    )
-    last_used_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    last_used_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     # Indexes
     __table_args__ = (Index("idx_user_active", "user_id", "is_active"),)

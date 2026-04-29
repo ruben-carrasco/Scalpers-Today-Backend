@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 from ..events.event_response import EventResponse

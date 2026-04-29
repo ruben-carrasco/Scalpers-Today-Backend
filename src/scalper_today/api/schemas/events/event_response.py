@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 from .ai_analysis_response import AIAnalysisResponse
