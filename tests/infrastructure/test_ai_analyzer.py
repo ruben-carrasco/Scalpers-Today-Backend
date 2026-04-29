@@ -24,7 +24,9 @@ def analyzer(settings, mock_http_client):
 
 @pytest.mark.asyncio
 async def test_parse_json_with_markdown_blocks(analyzer):
-    content = "Aquí tienes el análisis:\n```json\n{\"0\": {\"resumen\": \"test\"}}\n```\nEspero que te sirva."
+    content = (
+        'Aquí tienes el análisis:\n```json\n{"0": {"resumen": "test"}}\n```\nEspero que te sirva.'
+    )
     # El método _parse_json es estático
     result = analyzer._parse_json(content)
     assert result == {"0": {"resumen": "test"}}
@@ -40,7 +42,13 @@ async def test_analyze_quick_batch_mapping(analyzer, mock_http_client):
             {
                 "message": {
                     "content": json.dumps(
-                        {"0": {"resumen": "Dato positivo", "impacto": "ALTO", "sentimiento": "POSITIVO"}}
+                        {
+                            "0": {
+                                "resumen": "Dato positivo",
+                                "impacto": "ALTO",
+                                "sentimiento": "POSITIVO",
+                            }
+                        }
                     )
                 }
             }
@@ -48,7 +56,9 @@ async def test_analyze_quick_batch_mapping(analyzer, mock_http_client):
     }
     mock_http_client.post.return_value = mock_resp
 
-    event = EconomicEvent(id="e1", time="10:00", title="CPI", country="US", currency="USD", importance=Importance.HIGH)
+    event = EconomicEvent(
+        id="e1", time="10:00", title="CPI", country="US", currency="USD", importance=Importance.HIGH
+    )
     results = await analyzer._analyze_quick_batch([event])
 
     # Check if results use CacheKeyGenerator key
@@ -88,7 +98,9 @@ async def test_analyze_deep_batch_mapping_spanish_to_english(analyzer, mock_http
     }
     mock_http_client.post.return_value = mock_resp
 
-    event = EconomicEvent(id="e1", time="10:00", title="CPI", country="US", currency="USD", importance=Importance.HIGH)
+    event = EconomicEvent(
+        id="e1", time="10:00", title="CPI", country="US", currency="USD", importance=Importance.HIGH
+    )
     results = await analyzer._analyze_deep_batch([event])
 
     from scalper_today.domain.usecases import CacheKeyGenerator
@@ -123,12 +135,12 @@ async def test_call_api_retries_on_rate_limit(analyzer, mock_http_client):
 async def test_generate_briefing_handles_invalid_json(analyzer, mock_http_client):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = {
-        "choices": [{"message": {"content": "Esto no es un JSON"}}]
-    }
+    mock_resp.json.return_value = {"choices": [{"message": {"content": "Esto no es un JSON"}}]}
     mock_http_client.post.return_value = mock_resp
 
-    event = EconomicEvent(id="e1", time="10:00", title="CPI", country="US", currency="USD", importance=Importance.HIGH)
+    event = EconomicEvent(
+        id="e1", time="10:00", title="CPI", country="US", currency="USD", importance=Importance.HIGH
+    )
     briefing = await analyzer.generate_briefing([event])
 
     assert "Error" in briefing.general_outlook
