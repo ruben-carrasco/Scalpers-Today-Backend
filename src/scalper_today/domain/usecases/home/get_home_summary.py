@@ -43,7 +43,13 @@ class GetHomeSummaryUseCase:
         return next((e for e in events if e.time >= current_time_str), None)
 
     @staticmethod
-    def generate_highlights(events: List[EconomicEvent]) -> List[EconomicEvent]:
+    def generate_highlights(
+        events: List[EconomicEvent],
+        current_time_str: Optional[str] = None,
+    ) -> List[EconomicEvent]:
+        if current_time_str:
+            events = [e for e in events if e.time >= current_time_str]
+
         # Prioritize high impact (3 stars)
         highlights = [e for e in events if int(e.importance) == 3]
 
@@ -75,5 +81,5 @@ class GetHomeSummaryUseCase:
             next_event=self.find_next_upcoming(events, current_time_str),
             sentiment=briefing.statistics.sentiment,
             volatility_level=briefing.statistics.volatility_level,
-            highlights=self.generate_highlights(events),
+            highlights=self.generate_highlights(events, current_time_str),
         )
