@@ -7,6 +7,7 @@ import pytz
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IAIAnalyzer, IEventProvider, IEventRepository
 from .cache_key_generator import CacheKeyGenerator
+from .event_ordering import sort_events
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class GetMacroEventsUseCase:
                 f"Returning {len(final_events)} cached events: "
                 f"{with_quick} with quick analysis, deep analysis skipped"
             )
-            return final_events
+            return sort_events(final_events)
 
         high_impact_events = [e for e in events if e.is_high_impact]
         high_impact_needing_deep = [
@@ -125,4 +126,4 @@ class GetMacroEventsUseCase:
             f"{with_quick} with quick analysis, {with_deep} with deep analysis"
         )
 
-        return final_events
+        return sort_events(final_events)

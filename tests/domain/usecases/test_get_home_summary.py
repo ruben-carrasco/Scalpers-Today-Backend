@@ -250,6 +250,41 @@ def test_next_event_picks_first_upcoming():
     assert result.id == "2"
 
 
+def test_execute_orders_events_before_selecting_next_event():
+    usecase = GetHomeSummaryUseCase()
+    events = [
+        EconomicEvent(
+            id="later",
+            time="16:00",
+            title="Later",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="next",
+            time="10:00",
+            title="Next",
+            country="EU",
+            currency="EUR",
+            importance=Importance.MEDIUM,
+        ),
+    ]
+    briefing = DailyBriefing(
+        general_outlook="Market is active",
+        impacted_assets=[],
+        cautionary_hours=[],
+        statistics=BriefingStats(sentiment="NEUTRAL", volatility_level="MEDIUM"),
+    )
+    tz_madrid = pytz.timezone("Europe/Madrid")
+    fixed_now = datetime(2026, 3, 9, 9, 30, tzinfo=tz_madrid)
+
+    summary = usecase.execute(events, briefing, now=fixed_now)
+
+    assert summary.next_event is not None
+    assert summary.next_event.id == "next"
+
+
 def test_highlights_fallback_to_medium():
     usecase = GetHomeSummaryUseCase()
     events = [
