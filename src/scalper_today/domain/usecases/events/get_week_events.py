@@ -1,10 +1,11 @@
 import logging
 from collections import defaultdict
 from datetime import date
-from typing import List
 
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IEventProvider, IEventRepository
+
+from .event_ordering import sort_events
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class GetWeekEventsUseCase:
         self._start_date = start_date
         self._end_date = end_date
 
-    async def execute(self, force_refresh: bool = False) -> List[EconomicEvent]:
+    async def execute(self, force_refresh: bool = False) -> list[EconomicEvent]:
         logger.info(
             "Fetching week events",
             extra={"start_date": str(self._start_date), "end_date": str(self._end_date)},
@@ -35,7 +36,7 @@ class GetWeekEventsUseCase:
             )
             if range_cache_valid:
                 logger.info("Returning cached week events", extra={"count": len(cached_events)})
-                return cached_events
+                return sort_events(cached_events)
 
         provider_events = await self._provider.fetch_events_in_range(
             self._start_date, self._end_date
@@ -57,4 +58,4 @@ class GetWeekEventsUseCase:
             self._start_date, self._end_date
         )
         logger.info("Returning refreshed week events", extra={"count": len(refreshed_events)})
-        return refreshed_events
+        return sort_events(refreshed_events)

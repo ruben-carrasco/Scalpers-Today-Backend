@@ -1,11 +1,11 @@
 import logging
 
 from scalper_today.domain.dtos import LoginUserRequest, LoginUserResponse
-from scalper_today.domain.interfaces import IUserRepository, IAuthService
 from scalper_today.domain.exceptions import (
-    InvalidCredentialsError,
     AccountDisabledError,
+    InvalidCredentialsError,
 )
+from scalper_today.domain.interfaces import IAuthService, IUserRepository
 
 logger = logging.getLogger(__name__)
 

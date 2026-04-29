@@ -1,21 +1,21 @@
+from .alerts import (
+    CreateAlertRequest,
+    RegisterDeviceTokenRequest,
+    UpdateAlertRequest,
+)
 from .auth import (
     LoginUserRequest,
     LoginUserResponse,
-    RegisterUserRequest,
-    RegisterUserResponse,
     PasswordRequirements,
     PasswordValidationResult,
+    RegisterUserRequest,
+    RegisterUserResponse,
 )
 from .events import (
     AvailableCountriesResult,
     CountryInfo,
     EventFilterCriteria,
     UpcomingEventsResult,
-)
-from .alerts import (
-    CreateAlertRequest,
-    UpdateAlertRequest,
-    RegisterDeviceTokenRequest,
 )
 from .notifications import NotificationResult
 

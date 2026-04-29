@@ -1,9 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
-from .importance import Importance
 from .ai_analysis import AIAnalysis
+from .importance import Importance
 
 
 @dataclass
@@ -19,8 +18,8 @@ class EconomicEvent:
     previous: str = ""
     surprise: str = "neutral"
     url: str = ""
-    ai_analysis: Optional[AIAnalysis] = None
-    _timestamp: Optional[datetime] = field(default=None, repr=False)
+    ai_analysis: AIAnalysis | None = None
+    _timestamp: datetime | None = field(default=None, repr=False)
 
     @property
     def is_high_impact(self) -> bool:

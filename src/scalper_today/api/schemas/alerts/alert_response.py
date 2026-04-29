@@ -1,5 +1,3 @@
-from typing import Optional, List
-
 from pydantic import BaseModel
 
 from .alert_condition_schema import AlertConditionSchema
@@ -8,12 +6,12 @@ from .alert_condition_schema import AlertConditionSchema
 class AlertResponse(BaseModel):
     id: str
     name: str
-    description: Optional[str]
-    conditions: List[AlertConditionSchema]
+    description: str | None
+    conditions: list[AlertConditionSchema]
     status: str
     push_enabled: bool
     trigger_count: int
-    last_triggered_at: Optional[str]
+    last_triggered_at: str | None
     created_at: str
     updated_at: str
 

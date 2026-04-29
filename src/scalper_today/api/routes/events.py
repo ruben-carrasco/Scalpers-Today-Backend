@@ -1,9 +1,10 @@
 import logging
 import time
 from collections import defaultdict
-from typing import Annotated, List, Optional
+from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Security
 from fastapi.security import APIKeyHeader
 
 from scalper_today.api.dependencies import Container, get_container
@@ -11,22 +12,25 @@ from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.usecases import (
     EventFilter,
     EventFilterCriteria,
-    GetUpcomingEventsUseCase,
     GetAvailableCountriesUseCase,
+    GetUpcomingEventsUseCase,
 )
+
 from ..schemas import (
-    EventResponse,
-    WeekEventResponse,
-    HomeSummaryResponse,
-    DailyBriefingResponse,
-    FilteredEventsResponse,
-    ImportanceEventsResponse,
-    UpcomingEventsResponse,
     AvailableCountriesResponse,
-    RefreshEventsResponse,
-    WelcomeSchema,
-    TodayStatsSchema,
+    BackfillAnalysisResponse,
+    DailyBriefingResponse,
+    ErrorResponse,
+    EventResponse,
+    FilteredEventsResponse,
+    HomeSummaryResponse,
+    ImportanceEventsResponse,
     MarketSentimentSchema,
+    RefreshEventsResponse,
+    TodayStatsSchema,
+    UpcomingEventsResponse,
+    WeekEventResponse,
+    WelcomeSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +44,7 @@ ContainerDep = Annotated[Container, Depends(get_container)]
 _refresh_rate_limit_store: dict[str, list[float]] = defaultdict(list)
 REFRESH_RATE_LIMIT_MAX_ATTEMPTS = 10
 REFRESH_RATE_LIMIT_WINDOW_SECONDS = 60
+MAX_WEEK_RANGE_DAYS = 31
 
 
 def _get_client_ip(request: Request) -> str:
@@ -67,24 +72,53 @@ def _check_refresh_rate_limit(request: Request) -> None:
     _refresh_rate_limit_store[key].append(now)
 
 
+def _reset_refresh_rate_limit() -> None:
+    """Helper for tests to clear the rate limit store."""
+    _refresh_rate_limit_store.clear()
+
+
+def _resolve_event_range(
+    start_date: date | None,
+    end_date: date | None,
+) -> tuple[date | None, date | None]:
+    if start_date is None and end_date is None:
+        return None, None
+
+    if start_date is None or end_date is None:
+        raise HTTPException(
+            status_code=422, detail="startDate and endDate must be provided together"
+        )
+
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=422, detail="endDate must be greater than or equal to startDate"
+        )
+
+    range_days = (end_date - start_date).days + 1
+    if range_days > MAX_WEEK_RANGE_DAYS:
+        raise HTTPException(
+            status_code=422, detail=f"Date range cannot exceed {MAX_WEEK_RANGE_DAYS} days"
+        )
+
+    return start_date, end_date
+
+
 @router.get(
     "/macro",
     tags=["Events"],
-    summary="Get Economic Events",
+    summary="Get today's economic events",
     description=(
-        "Returns today's normalized economic events. "
-        "If the upstream provider has no data and local cache is empty, returns `503`."
+        "Returns today's normalized economic events in Madrid time. The response is served from "
+        "cache when valid and falls back to the configured provider when refresh is needed."
     ),
-    response_model=List[EventResponse],
+    response_model=list[EventResponse],
     responses={
-        200: {
-            "description": "List of economic events retrieved successfully.",
-        },
-        503: {"description": "Economic events temporarily unavailable."},
-        500: {"description": "Internal server error fetching events."},
+        200: {"description": "Economic events retrieved successfully."},
+        503: {"model": ErrorResponse, "description": "Events temporarily unavailable."},
+        500: {"model": ErrorResponse, "description": "Internal server error fetching events."},
     },
 )
-async def get_macro_events(c: ContainerDep) -> List[EconomicEvent]:
+async def get_macro_events(c: ContainerDep) -> list[EconomicEvent]:
     events = await c.get_macro_events()
     if not events:
         raise HTTPException(status_code=503, detail="Economic events temporarily unavailable")
@@ -93,23 +127,23 @@ async def get_macro_events(c: ContainerDep) -> List[EconomicEvent]:
 
 @router.post(
     "/macro/refresh",
-    tags=["Events"],
-    summary="Force Refresh Events",
+    tags=["Admin - Refresh"],
+    summary="Refresh today's economic events",
     description=(
-        "Forces a provider refresh and cache update for today's events. "
-        "Requires `X-API-Key` header."
+        "Forces a provider refresh and cache update for today's events. Requires the `X-API-Key` "
+        "header and is rate-limited to protect external provider quota."
     ),
     response_model=RefreshEventsResponse,
     responses={
         200: {"description": "Events refreshed successfully."},
-        403: {"description": "Invalid or missing API key."},
-        429: {"description": "Too many refresh requests."},
+        403: {"model": ErrorResponse, "description": "Invalid or missing API key."},
+        429: {"model": ErrorResponse, "description": "Too many refresh requests."},
     },
 )
 async def refresh_macro_events(
     c: ContainerDep,
     req: Request,
-    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
+    api_key: Annotated[str | None, Security(api_key_header)] = None,
 ) -> RefreshEventsResponse:
     _check_refresh_rate_limit(req)
     expected_key = c.settings.refresh_api_key
@@ -126,7 +160,12 @@ async def refresh_macro_events(
 
 
 @router.get(
-    "/brief", tags=["Briefing"], summary="Get Daily Briefing", response_model=DailyBriefingResponse
+    "/brief",
+    tags=["Briefing"],
+    summary="Get daily AI briefing",
+    description="Returns the AI-generated market briefing for today's macroeconomic context.",
+    response_model=DailyBriefingResponse,
+    responses={200: {"description": "Daily briefing returned successfully."}},
 )
 async def get_daily_briefing(c: ContainerDep) -> DailyBriefingResponse:
     return await c.get_daily_briefing()
@@ -135,8 +174,13 @@ async def get_daily_briefing(c: ContainerDep) -> DailyBriefingResponse:
 @router.get(
     "/home/summary",
     tags=["Mobile - Home"],
-    summary="Home Screen Summary",
+    summary="Get mobile home summary",
+    description=(
+        "Returns the compact payload used by the mobile home screen: greeting, event counters, "
+        "next event, sentiment, volatility, and highlights."
+    ),
     response_model=HomeSummaryResponse,
+    responses={200: {"description": "Home summary returned successfully."}},
 )
 async def get_home_summary(c: ContainerDep):
     summary = await c.get_home_summary()
@@ -162,17 +206,33 @@ async def get_home_summary(c: ContainerDep):
 @router.get(
     "/events/filtered",
     tags=["Mobile - Events"],
-    summary="Filtered Events",
+    summary="Filter today's events",
+    description=(
+        "Filters today's economic events by importance, country, data availability, and text "
+        "search. Supports offset/limit pagination for mobile lists."
+    ),
     response_model=FilteredEventsResponse,
+    responses={
+        200: {"description": "Filtered events returned successfully."},
+        422: {"model": ErrorResponse, "description": "Invalid filter or pagination parameter."},
+    },
 )
 async def get_filtered_events(
     c: ContainerDep,
-    importance: Annotated[Optional[int], Query(ge=1, le=3)] = None,
-    country: Annotated[Optional[str], Query(max_length=100)] = None,
-    has_data: Annotated[Optional[bool], Query()] = None,
-    search: Annotated[Optional[str], Query(min_length=1, max_length=200)] = None,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    importance: Annotated[
+        int | None, Query(ge=1, le=3, description="Importance level: 1 low, 2 medium, 3 high.")
+    ] = None,
+    country: Annotated[
+        str | None, Query(max_length=100, description="Country or currency code to match.")
+    ] = None,
+    has_data: Annotated[
+        bool | None, Query(description="When true, only events with released actual values.")
+    ] = None,
+    search: Annotated[
+        str | None, Query(min_length=1, max_length=200, description="Text search over titles.")
+    ] = None,
+    offset: Annotated[int, Query(ge=0, description="Zero-based pagination offset.")] = 0,
+    limit: Annotated[int, Query(ge=1, le=100, description="Maximum events to return.")] = 50,
 ) -> FilteredEventsResponse:
     events = await c.get_macro_events()
 
@@ -188,23 +248,154 @@ async def get_filtered_events(
 @router.get(
     "/events/week",
     tags=["Mobile - Events"],
-    summary="Weekly Events",
-    response_model=List[WeekEventResponse],
+    summary="Get events by weekly date range",
+    description=(
+        "Returns events for the current week by default. Optionally accepts `startDate` and "
+        "`endDate` in `YYYY-MM-DD` format. Custom ranges are limited to 31 days."
+    ),
+    response_model=list[WeekEventResponse],
+    responses={
+        200: {"description": "Weekly events returned successfully."},
+        422: {"model": ErrorResponse, "description": "Invalid or incomplete date range."},
+    },
 )
-async def get_week_events(c: ContainerDep) -> List[WeekEventResponse]:
-    events = await c.get_week_events()
+async def get_week_events(
+    c: ContainerDep,
+    start_date: Annotated[
+        date | None, Query(alias="startDate", description="Inclusive range start date.")
+    ] = None,
+    end_date: Annotated[
+        date | None, Query(alias="endDate", description="Inclusive range end date.")
+    ] = None,
+) -> list[WeekEventResponse]:
+    resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
+    events = await c.get_week_events(start_date=resolved_start, end_date=resolved_end)
     return [WeekEventResponse.from_domain(event) for event in events]
+
+
+@router.post(
+    "/events/week/refresh",
+    tags=["Admin - Refresh"],
+    summary="Refresh events by weekly date range",
+    description=(
+        "Forces a provider refresh and cache update for the current week or a custom date range. "
+        "Requires the `X-API-Key` header and is rate-limited to protect external provider quota."
+    ),
+    response_model=RefreshEventsResponse,
+    responses={
+        200: {"description": "Weekly events refreshed successfully."},
+        403: {"model": ErrorResponse, "description": "Invalid or missing API key."},
+        422: {"model": ErrorResponse, "description": "Invalid or incomplete date range."},
+        429: {"model": ErrorResponse, "description": "Too many refresh requests."},
+    },
+)
+async def refresh_week_events(
+    c: ContainerDep,
+    req: Request,
+    start_date: Annotated[
+        date | None, Query(alias="startDate", description="Inclusive range start date.")
+    ] = None,
+    end_date: Annotated[
+        date | None, Query(alias="endDate", description="Inclusive range end date.")
+    ] = None,
+    api_key: Annotated[str | None, Security(api_key_header)] = None,
+) -> RefreshEventsResponse:
+    _check_refresh_rate_limit(req)
+    expected_key = c.settings.refresh_api_key
+    if not expected_key or api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+    resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
+    logger.info("Force refreshing week events from source...")
+    events = await c.get_week_events(
+        force_refresh=True,
+        start_date=resolved_start,
+        end_date=resolved_end,
+    )
+    return RefreshEventsResponse(
+        status="success",
+        message=f"Refreshed {len(events)} weekly events",
+        count=len(events),
+    )
+
+
+@router.post(
+    "/events/analysis/backfill",
+    tags=["Admin - Refresh"],
+    summary="Backfill missing AI analysis for stored events",
+    description=(
+        "Generates missing AI analysis for events already stored in the database. This endpoint "
+        "does not call the economic-calendar provider, so it does not consume RapidAPI quota. "
+        "By default it processes today's events and quick analysis only. Provide `startDate` and "
+        "`endDate` to process a custom range, and set `includeDeep=true` to also complete deep "
+        "analysis for high-impact events."
+    ),
+    response_model=BackfillAnalysisResponse,
+    responses={
+        200: {"description": "AI analysis backfill completed."},
+        403: {"model": ErrorResponse, "description": "Invalid or missing API key."},
+        422: {"model": ErrorResponse, "description": "Invalid or incomplete date range."},
+        429: {"model": ErrorResponse, "description": "Too many backfill requests."},
+    },
+)
+async def backfill_event_analysis(
+    c: ContainerDep,
+    req: Request,
+    start_date: Annotated[
+        date | None, Query(alias="startDate", description="Inclusive range start date.")
+    ] = None,
+    end_date: Annotated[
+        date | None, Query(alias="endDate", description="Inclusive range end date.")
+    ] = None,
+    include_deep: Annotated[
+        bool,
+        Query(
+            alias="includeDeep",
+            description="When true, also generate missing deep analysis for high-impact events.",
+        ),
+    ] = False,
+    api_key: Annotated[str | None, Security(api_key_header)] = None,
+) -> BackfillAnalysisResponse:
+    _check_refresh_rate_limit(req)
+    expected_key = c.settings.refresh_api_key
+    if not expected_key or api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+    resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
+    result = await c.backfill_event_analysis(
+        start_date=resolved_start,
+        end_date=resolved_end,
+        include_deep=include_deep,
+    )
+
+    updated_count = result.quick_saved + result.deep_saved
+    return BackfillAnalysisResponse(
+        status="success",
+        message=f"Backfilled AI analysis for {updated_count} stored events",
+        total_events=result.total_events,
+        quick_requested=result.quick_requested,
+        quick_saved=result.quick_saved,
+        deep_requested=result.deep_requested,
+        deep_saved=result.deep_saved,
+    )
 
 
 @router.get(
     "/events/by-importance/{importance}",
     tags=["Mobile - Events"],
-    summary="Events by Importance",
+    summary="Get events by importance",
+    description="Returns today's economic events filtered by impact level.",
     response_model=ImportanceEventsResponse,
-    responses={400: {"description": "Invalid importance level provided. Must be 1, 2, or 3."}},
+    responses={
+        200: {"description": "Events filtered by importance returned successfully."},
+        400: {"model": ErrorResponse, "description": "Importance must be 1, 2, or 3."},
+    },
 )
 async def get_events_by_importance(
-    importance: int,
+    importance: Annotated[
+        int,
+        Path(ge=1, le=3, description="Importance level: 1 low, 2 medium, 3 high."),
+    ],
     c: ContainerDep,
 ) -> ImportanceEventsResponse:
     if importance not in [1, 2, 3]:
@@ -223,12 +414,17 @@ async def get_events_by_importance(
 @router.get(
     "/events/upcoming",
     tags=["Mobile - Events"],
-    summary="Upcoming Events",
+    summary="Get upcoming events",
+    description="Returns the next upcoming events from today's calendar, ordered by time.",
     response_model=UpcomingEventsResponse,
+    responses={
+        200: {"description": "Upcoming events returned successfully."},
+        422: {"model": ErrorResponse, "description": "Invalid limit parameter."},
+    },
 )
 async def get_upcoming_events(
     c: ContainerDep,
-    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+    limit: Annotated[int, Query(ge=1, le=20, description="Maximum upcoming events to return.")] = 5,
 ):
     events = await c.get_macro_events()
 
@@ -241,8 +437,10 @@ async def get_upcoming_events(
 @router.get(
     "/config/countries",
     tags=["Mobile - Config"],
-    summary="Available Countries",
+    summary="Get available countries",
+    description="Returns the countries/currencies currently present in today's calendar data.",
     response_model=AvailableCountriesResponse,
+    responses={200: {"description": "Available countries returned successfully."}},
 )
 async def get_available_countries(c: ContainerDep):
     events = await c.get_macro_events()

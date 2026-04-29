@@ -1,14 +1,12 @@
-from typing import List
-
-from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.dtos import EventFilterCriteria
+from scalper_today.domain.entities import EconomicEvent
 
 
 class EventFilter:
     @staticmethod
     def apply_criteria(
-        events: List[EconomicEvent], criteria: EventFilterCriteria
-    ) -> List[EconomicEvent]:
+        events: list[EconomicEvent], criteria: EventFilterCriteria
+    ) -> list[EconomicEvent]:
         filtered = events
 
         if criteria.importance is not None:
@@ -34,17 +32,17 @@ class EventFilter:
         return filtered
 
     @staticmethod
-    def by_importance(events: List[EconomicEvent], importance: int) -> List[EconomicEvent]:
+    def by_importance(events: list[EconomicEvent], importance: int) -> list[EconomicEvent]:
         return [e for e in events if int(e.importance) == importance]
 
     @staticmethod
-    def high_impact_only(events: List[EconomicEvent]) -> List[EconomicEvent]:
+    def high_impact_only(events: list[EconomicEvent]) -> list[EconomicEvent]:
         return [e for e in events if e.is_high_impact]
 
     @staticmethod
-    def without_analysis(events: List[EconomicEvent]) -> List[EconomicEvent]:
+    def without_analysis(events: list[EconomicEvent]) -> list[EconomicEvent]:
         return [e for e in events if e.ai_analysis is None]
 
     @staticmethod
-    def with_data(events: List[EconomicEvent]) -> List[EconomicEvent]:
+    def with_data(events: list[EconomicEvent]) -> list[EconomicEvent]:
         return [e for e in events if e.has_data]

@@ -1,15 +1,42 @@
+from datetime import date, datetime
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
 import pytz
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from scalper_today.domain.entities import EconomicEvent, Importance
+from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertStatus, AlertType
 from scalper_today.infrastructure.notifications.notification_scheduler import NotificationScheduler
-from scalper_today.domain.entities import (
-    EconomicEvent,
-    Alert,
-    AlertCondition,
-    AlertType,
-    Importance,
-)
+
+TZ_MADRID = pytz.timezone("Europe/Madrid")
+
+
+def make_event(**kwargs):
+    defaults = dict(
+        id="evt-1",
+        time="14:30",
+        title="NFP",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        actual="200K",
+        forecast="180K",
+        previous="150K",
+        surprise="positive",
+    )
+    defaults.update(kwargs)
+    return EconomicEvent(**defaults)
+
+
+def make_alert(conditions, user_id="user-1"):
+    return Alert(
+        id="alert-1",
+        user_id=user_id,
+        name="Test Alert",
+        conditions=conditions,
+        status=AlertStatus.ACTIVE,
+        push_enabled=True,
+    )
 
 
 @pytest.fixture

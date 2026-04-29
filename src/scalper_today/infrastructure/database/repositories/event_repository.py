@@ -1,14 +1,14 @@
 import json
 import logging
-from datetime import datetime, date, timezone
-from typing import List, Optional
+from datetime import UTC, date, datetime
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scalper_today.domain import EconomicEvent, AIAnalysis, DailyBriefing, BriefingStats
+from scalper_today.domain import AIAnalysis, BriefingStats, DailyBriefing, EconomicEvent
 from scalper_today.domain.interfaces import IEventRepository
-from ..models import EventModel, DailyBriefingModel
+
+from ..models import DailyBriefingModel, EventModel
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class EventRepository(IEventRepository):
         self._session = session
         self._cache_ttl_minutes = cache_ttl_minutes
 
-    async def get_cache_last_update(self, target_date: date) -> Optional[datetime]:
+    async def get_cache_last_update(self, target_date: date) -> datetime | None:
         query = select(func.max(EventModel.updated_at)).where(
             *self._range_clause(target_date, target_date)
         )
@@ -29,7 +29,7 @@ class EventRepository(IEventRepository):
 
     async def get_range_cache_last_update(
         self, start_date: date, end_date: date
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         query = select(func.max(EventModel.updated_at)).where(
             *self._range_clause(start_date, end_date)
         )
@@ -44,10 +44,10 @@ class EventRepository(IEventRepository):
         last_update = await self.get_range_cache_last_update(start_date, end_date)
         return self._is_cache_timestamp_valid(last_update)
 
-    def _is_cache_timestamp_valid(self, last_update: Optional[datetime]) -> bool:
+    def _is_cache_timestamp_valid(self, last_update: datetime | None) -> bool:
         if last_update is None:
             return False
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if last_update.tzinfo is None:
             now = now.replace(tzinfo=None)
 
@@ -67,25 +67,35 @@ class EventRepository(IEventRepository):
 
     async def get_events_by_date(
         self, target_date: date, only_missing_analysis: bool = False
-    ) -> List[EconomicEvent]:
+    ) -> list[EconomicEvent]:
         query = select(EventModel).where(*self._range_clause(target_date, target_date))
 
         if only_missing_analysis:
             query = query.where(EventModel.has_quick_analysis is False)
 
-        query = query.order_by(EventModel.time, EventModel.country, EventModel.importance.desc())
+        query = query.order_by(
+            EventModel.date,
+            EventModel.time,
+            EventModel.importance.desc(),
+            EventModel.country,
+            EventModel.title,
+        )
 
         result = await self._session.execute(query)
         models = result.scalars().all()
 
         return [self._to_domain(model) for model in models]
 
-    async def get_events_in_range(self, start_date: date, end_date: date) -> List[EconomicEvent]:
+    async def get_events_in_range(self, start_date: date, end_date: date) -> list[EconomicEvent]:
         query = (
             select(EventModel)
             .where(*self._range_clause(start_date, end_date))
             .order_by(
-                EventModel.date, EventModel.time, EventModel.country, EventModel.importance.desc()
+                EventModel.date,
+                EventModel.time,
+                EventModel.importance.desc(),
+                EventModel.country,
+                EventModel.title,
             )
         )
 
@@ -95,7 +105,7 @@ class EventRepository(IEventRepository):
 
     async def get_high_impact_events(
         self, target_date: date, only_missing_deep_analysis: bool = False
-    ) -> List[EconomicEvent]:
+    ) -> list[EconomicEvent]:
         query = select(EventModel).where(
             and_(
                 EventModel.date >= datetime.combine(target_date, datetime.min.time()),
@@ -107,7 +117,13 @@ class EventRepository(IEventRepository):
         if only_missing_deep_analysis:
             query = query.where(EventModel.has_deep_analysis is False)
 
-        query = query.order_by(EventModel.time, EventModel.country, EventModel.importance.desc())
+        query = query.order_by(
+            EventModel.date,
+            EventModel.time,
+            EventModel.importance.desc(),
+            EventModel.country,
+            EventModel.title,
+        )
 
         result = await self._session.execute(query)
         models = result.scalars().all()
@@ -123,13 +139,13 @@ class EventRepository(IEventRepository):
             model = self._to_model(event, target_date)
             self._session.add(model)
 
-    async def save_events_batch(self, events: List[EconomicEvent], target_date: date) -> None:
+    async def save_events_batch(self, events: list[EconomicEvent], target_date: date) -> None:
         for event in events:
             await self.save_event(event, target_date)
 
         logger.info(f"Saved batch of {len(events)} events for {target_date}")
 
-    async def get_daily_briefing(self, target_date: date) -> Optional[DailyBriefing]:
+    async def get_daily_briefing(self, target_date: date) -> DailyBriefing | None:
         briefing_date = datetime.combine(target_date, datetime.min.time())
         model = await self._session.get(DailyBriefingModel, briefing_date)
 

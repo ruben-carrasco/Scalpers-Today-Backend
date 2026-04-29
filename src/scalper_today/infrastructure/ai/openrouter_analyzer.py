@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-from typing import Dict, List
 
 import httpx
 
@@ -39,7 +38,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             "Content-Type": "application/json",
         }
 
-    async def analyze_events(self, events: List[EconomicEvent]) -> Dict[str, AIAnalysis]:
+    async def analyze_events(self, events: list[EconomicEvent]) -> dict[str, AIAnalysis]:
         if not self._is_configured:
             logger.warning("AI not configured - OPENROUTER_API_KEY missing")
             return {}
@@ -48,7 +47,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             return {}
 
         try:
-            results: Dict[str, AIAnalysis] = {}
+            results: dict[str, AIAnalysis] = {}
             total_batches = (len(events) + self.BATCH_SIZE - 1) // self.BATCH_SIZE
 
             logger.info(
@@ -72,7 +71,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             logger.warning(f"AI analysis unavailable, returning empty results: {e.message}")
             return {}
 
-    async def analyze_events_deep(self, events: List[EconomicEvent]) -> Dict[str, AIAnalysis]:
+    async def analyze_events_deep(self, events: list[EconomicEvent]) -> dict[str, AIAnalysis]:
         if not self._is_configured:
             logger.warning("AI not configured for deep analysis")
             return {}
@@ -84,7 +83,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             return {}
 
         try:
-            results: Dict[str, AIAnalysis] = {}
+            results: dict[str, AIAnalysis] = {}
             total_batches = (len(high_impact) + self.DEEP_BATCH_SIZE - 1) // self.DEEP_BATCH_SIZE
 
             logger.info(
@@ -110,7 +109,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             logger.warning(f"AI deep analysis unavailable, returning empty results: {e.message}")
             return {}
 
-    async def _analyze_quick_batch(self, batch: List[EconomicEvent]) -> Dict[str, AIAnalysis]:
+    async def _analyze_quick_batch(self, batch: list[EconomicEvent]) -> dict[str, AIAnalysis]:
         prompt_data = [
             {
                 "id": idx,
@@ -132,7 +131,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
         if not response:
             return {}
 
-        results: Dict[str, AIAnalysis] = {}
+        results: dict[str, AIAnalysis] = {}
         for id_str, data in response.items():
             try:
                 idx = int(id_str)
@@ -144,7 +143,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
 
         return results
 
-    async def _analyze_deep_batch(self, batch: List[EconomicEvent]) -> Dict[str, AIAnalysis]:
+    async def _analyze_deep_batch(self, batch: list[EconomicEvent]) -> dict[str, AIAnalysis]:
         prompt_data = [
             {
                 "id": idx,
@@ -166,7 +165,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
         if not response:
             return {}
 
-        results: Dict[str, AIAnalysis] = {}
+        results: dict[str, AIAnalysis] = {}
         for id_str, data in response.items():
             try:
                 idx = int(id_str)
@@ -188,7 +187,7 @@ class OpenRouterAnalyzer(IAIAnalyzer):
 
         return results
 
-    async def generate_briefing(self, events: List[EconomicEvent]) -> DailyBriefing:
+    async def generate_briefing(self, events: list[EconomicEvent]) -> DailyBriefing:
         if not self._is_configured:
             logger.warning("AI not configured for briefing")
             return DailyBriefing.empty_day(len(events))

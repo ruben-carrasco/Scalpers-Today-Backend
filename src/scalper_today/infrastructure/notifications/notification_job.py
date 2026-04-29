@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Set
 
 
 @dataclass
@@ -11,5 +10,5 @@ class NotificationJob:
     country: str
     currency: str
     importance: int
-    user_ids: Set[str]
+    user_ids: set[str]
     notified: bool = False

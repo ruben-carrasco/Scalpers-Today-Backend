@@ -1,6 +1,6 @@
-from .models import Base, EventModel, DailyBriefingModel, UserModel, AlertModel, DeviceTokenModel
 from .database_manager import DatabaseManager, get_db_session, get_db_url
-from .repositories import EventRepository, UserRepository, AlertRepository, DeviceTokenRepository
+from .models import AlertModel, Base, DailyBriefingModel, DeviceTokenModel, EventModel, UserModel
+from .repositories import AlertRepository, DeviceTokenRepository, EventRepository, UserRepository
 
 __all__ = [
     "Base",

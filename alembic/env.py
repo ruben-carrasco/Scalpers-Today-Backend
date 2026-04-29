@@ -1,6 +1,6 @@
 import asyncio
-import sys
 import os
+import sys
 from logging.config import fileConfig
 
 # Add src to Python path so we can import our application modules
@@ -11,13 +11,12 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
 from scalper_today.config import get_settings
-from scalper_today.infrastructure.database.models.base import Base
 from scalper_today.infrastructure.database.database_manager import get_db_url
 
 # Make sure all models are imported so metadata.create_all finds them
 from scalper_today.infrastructure.database.models import *  # noqa: F403
+from scalper_today.infrastructure.database.models.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,9 +1,8 @@
 import pytest
 
-from scalper_today.domain.usecases import EventFilter
 from scalper_today.domain.dtos import EventFilterCriteria
-from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.entities import Importance
+from scalper_today.domain.entities import EconomicEvent, Importance
+from scalper_today.domain.usecases import EventFilter
 
 
 @pytest.fixture

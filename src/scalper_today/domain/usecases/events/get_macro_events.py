@@ -1,12 +1,13 @@
 import logging
 from datetime import date, datetime
-from typing import List
 
 import pytz
 
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IAIAnalyzer, IEventProvider, IEventRepository
+
 from .cache_key_generator import CacheKeyGenerator
+from .event_ordering import sort_events
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class GetMacroEventsUseCase:
         self._analyzer = analyzer
         self._target_date = target_date or datetime.now(pytz.timezone("Europe/Madrid")).date()
 
-    async def execute(self, force_refresh: bool = False) -> List[EconomicEvent]:
+    async def execute(self, force_refresh: bool = False) -> list[EconomicEvent]:
         logger.info(f"Fetching events for {self._target_date}")
 
         if not force_refresh:
@@ -32,8 +33,10 @@ class GetMacroEventsUseCase:
             if cache_valid:
                 cached_events = await self._repository.get_events_by_date(self._target_date)
                 if cached_events:
-                    logger.info(f"Cache valid, returning {len(cached_events)} events from database")
-                    return cached_events
+                    logger.info(
+                        f"Cache valid, completing missing analysis for {len(cached_events)} events"
+                    )
+                    return await self._complete_missing_analysis(cached_events, include_deep=False)
 
             cached_events = await self._repository.get_events_by_date(self._target_date)
             if cached_events:
@@ -46,7 +49,8 @@ class GetMacroEventsUseCase:
 
         if not scraped_events:
             logger.warning("No events fetched from provider")
-            return await self._repository.get_events_by_date(self._target_date)
+            cached_events = await self._repository.get_events_by_date(self._target_date)
+            return await self._complete_missing_analysis(cached_events, include_deep=False)
 
         logger.info(f"Scraped {len(scraped_events)} events")
 
@@ -56,7 +60,15 @@ class GetMacroEventsUseCase:
         all_events = await self._repository.get_events_by_date(self._target_date)
         logger.info(f"Loaded {len(all_events)} events from database")
 
-        events_needing_quick = [e for e in all_events if e.ai_analysis is None]
+        return await self._complete_missing_analysis(all_events)
+
+    async def _complete_missing_analysis(
+        self, events: list[EconomicEvent], include_deep: bool = True
+    ) -> list[EconomicEvent]:
+        if not events:
+            return []
+
+        events_needing_quick = [e for e in events if e.ai_analysis is None]
 
         if events_needing_quick:
             logger.info(f"Performing quick analysis on {len(events_needing_quick)} events")
@@ -72,7 +84,16 @@ class GetMacroEventsUseCase:
         else:
             logger.info("All events already have quick analysis")
 
-        high_impact_events = [e for e in all_events if e.is_high_impact]
+        if not include_deep:
+            final_events = await self._repository.get_events_by_date(self._target_date)
+            with_quick = sum(1 for e in final_events if e.ai_analysis is not None)
+            logger.info(
+                f"Returning {len(final_events)} cached events: "
+                f"{with_quick} with quick analysis, deep analysis skipped"
+            )
+            return sort_events(final_events)
+
+        high_impact_events = [e for e in events if e.is_high_impact]
         high_impact_needing_deep = [
             e for e in high_impact_events if not (e.ai_analysis and e.ai_analysis.is_deep_analysis)
         ]
@@ -105,4 +126,4 @@ class GetMacroEventsUseCase:
             f"{with_quick} with quick analysis, {with_deep} with deep analysis"
         )
 
-        return final_events
+        return sort_events(final_events)

@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Language(str, Enum):
+class Language(StrEnum):
     ES = "es"
     EN = "en"

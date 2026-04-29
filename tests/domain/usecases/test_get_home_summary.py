@@ -1,11 +1,9 @@
 from datetime import datetime
+
 import pytz
 
+from scalper_today.domain.entities import BriefingStats, DailyBriefing, EconomicEvent, Importance
 from scalper_today.domain.usecases import GetHomeSummaryUseCase
-from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.entities import Importance
-from scalper_today.domain.entities import DailyBriefing
-from scalper_today.domain.entities import BriefingStats
 
 
 def test_get_greeting():
@@ -110,6 +108,48 @@ def test_execute_home_summary():
     assert summary.highlights[0].id == "2"
 
 
+def test_execute_home_summary_highlights_only_future_events():
+    usecase = GetHomeSummaryUseCase()
+    events = [
+        EconomicEvent(
+            id="1",
+            time="09:00",
+            title="Past High",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="2",
+            time="10:00",
+            title="Future Medium",
+            country="EU",
+            currency="EUR",
+            importance=Importance.MEDIUM,
+        ),
+        EconomicEvent(
+            id="3",
+            time="14:00",
+            title="Future High",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+    ]
+    briefing = DailyBriefing(
+        general_outlook="Market is active",
+        impacted_assets=[],
+        cautionary_hours=[],
+        statistics=BriefingStats(sentiment="NEUTRAL", volatility_level="MEDIUM"),
+    )
+    tz_madrid = pytz.timezone("Europe/Madrid")
+    fixed_now = datetime(2026, 3, 9, 9, 30, tzinfo=tz_madrid)
+
+    summary = usecase.execute(events, briefing, now=fixed_now)
+
+    assert [event.id for event in summary.highlights] == ["3"]
+
+
 def test_execute_with_empty_events():
     usecase = GetHomeSummaryUseCase()
     briefing = DailyBriefing(
@@ -208,6 +248,41 @@ def test_next_event_picks_first_upcoming():
     assert result.id == "2"
 
 
+def test_execute_orders_events_before_selecting_next_event():
+    usecase = GetHomeSummaryUseCase()
+    events = [
+        EconomicEvent(
+            id="later",
+            time="16:00",
+            title="Later",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="next",
+            time="10:00",
+            title="Next",
+            country="EU",
+            currency="EUR",
+            importance=Importance.MEDIUM,
+        ),
+    ]
+    briefing = DailyBriefing(
+        general_outlook="Market is active",
+        impacted_assets=[],
+        cautionary_hours=[],
+        statistics=BriefingStats(sentiment="NEUTRAL", volatility_level="MEDIUM"),
+    )
+    tz_madrid = pytz.timezone("Europe/Madrid")
+    fixed_now = datetime(2026, 3, 9, 9, 30, tzinfo=tz_madrid)
+
+    summary = usecase.execute(events, briefing, now=fixed_now)
+
+    assert summary.next_event is not None
+    assert summary.next_event.id == "next"
+
+
 def test_highlights_fallback_to_medium():
     usecase = GetHomeSummaryUseCase()
     events = [
@@ -258,3 +333,56 @@ def test_highlights_max_three():
 
     highlights = usecase.generate_highlights(events)
     assert len(highlights) == 3
+
+
+def test_highlights_filters_past_events_when_current_time_provided():
+    usecase = GetHomeSummaryUseCase()
+    events = [
+        EconomicEvent(
+            id="1",
+            time="08:00",
+            title="Past High",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="2",
+            time="10:00",
+            title="Future High",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+    ]
+
+    highlights = usecase.generate_highlights(events, current_time_str="09:30")
+
+    assert len(highlights) == 1
+    assert highlights[0].id == "2"
+
+
+def test_highlights_empty_when_all_events_are_past():
+    usecase = GetHomeSummaryUseCase()
+    events = [
+        EconomicEvent(
+            id="1",
+            time="08:00",
+            title="Past High",
+            country="US",
+            currency="USD",
+            importance=Importance.HIGH,
+        ),
+        EconomicEvent(
+            id="2",
+            time="09:00",
+            title="Past Medium",
+            country="EU",
+            currency="EUR",
+            importance=Importance.MEDIUM,
+        ),
+    ]
+
+    highlights = usecase.generate_highlights(events, current_time_str="10:00")
+
+    assert highlights == []

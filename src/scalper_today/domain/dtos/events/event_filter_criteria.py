@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
 class EventFilterCriteria:
-    importance: Optional[int] = None
-    country: Optional[str] = None
-    has_data: Optional[bool] = None
-    search: Optional[str] = None
+    importance: int | None = None
+    country: str | None = None
+    has_data: bool | None = None
+    search: str | None = None

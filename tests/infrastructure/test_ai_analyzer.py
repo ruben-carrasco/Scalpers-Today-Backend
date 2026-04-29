@@ -1,15 +1,18 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from scalper_today.domain.entities import EconomicEvent, Importance
 from scalper_today.infrastructure.ai.openrouter_analyzer import OpenRouterAnalyzer
-from scalper_today.domain.entities import EconomicEvent
-from scalper_today.domain.entities import Importance
 
 
 @pytest.fixture
 def analyzer(mock_ai_analyzer):
-    from scalper_today.config import get_settings
-    import httpx
     import os
+
+    import httpx
+
+    from scalper_today.config import get_settings
 
     # Mock the API key in environment so analyzer thinks it is configured
     os.environ["OPENROUTER_API_KEY"] = "test_key"

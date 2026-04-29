@@ -1,12 +1,10 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
 class DeviceTokenResponse(BaseModel):
     id: str
     device_type: str
-    device_name: Optional[str]
+    device_name: str | None
     is_active: bool
     created_at: str
     last_used_at: str

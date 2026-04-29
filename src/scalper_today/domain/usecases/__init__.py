@@ -1,45 +1,49 @@
-from .auth import (
-    LoginUserUseCase,
-    RegisterUserUseCase,
-    GetCurrentUserUseCase,
-    PasswordValidator,
-)
-from .events import (
-    CacheKeyGenerator,
-    GetMacroEventsUseCase,
-    GetWeekEventsUseCase,
-    GetUpcomingEventsUseCase,
-    GetAvailableCountriesUseCase,
-    EventFilter,
-)
-from .alerts import (
-    CreateAlertUseCase,
-    ListUserAlertsUseCase,
-    UpdateAlertUseCase,
-    DeleteAlertUseCase,
-    RegisterDeviceTokenUseCase,
-)
-from .home import GetHomeSummaryUseCase
-from .briefing import GetDailyBriefingUseCase
-
 from scalper_today.domain.dtos import (
-    LoginUserRequest,
-    LoginUserResponse,
-    RegisterUserRequest,
-    RegisterUserResponse,
-    CreateAlertRequest,
-    UpdateAlertRequest,
-    RegisterDeviceTokenRequest,
     AvailableCountriesResult,
     CountryInfo,
+    CreateAlertRequest,
     EventFilterCriteria,
+    LoginUserRequest,
+    LoginUserResponse,
     PasswordRequirements,
     PasswordValidationResult,
+    RegisterDeviceTokenRequest,
+    RegisterUserRequest,
+    RegisterUserResponse,
     UpcomingEventsResult,
+    UpdateAlertRequest,
 )
+
+from .alerts import (
+    CreateAlertUseCase,
+    DeleteAlertUseCase,
+    ListUserAlertsUseCase,
+    RegisterDeviceTokenUseCase,
+    UpdateAlertUseCase,
+)
+from .auth import (
+    GetCurrentUserUseCase,
+    LoginUserUseCase,
+    PasswordValidator,
+    RegisterUserUseCase,
+)
+from .briefing import GetDailyBriefingUseCase
+from .events import (
+    BackfillEventAnalysisResult,
+    BackfillEventAnalysisUseCase,
+    CacheKeyGenerator,
+    EventFilter,
+    GetAvailableCountriesUseCase,
+    GetMacroEventsUseCase,
+    GetUpcomingEventsUseCase,
+    GetWeekEventsUseCase,
+)
+from .home import GetHomeSummaryUseCase
 
 __all__ = [
     "CacheKeyGenerator",
+    "BackfillEventAnalysisResult",
+    "BackfillEventAnalysisUseCase",
     "EventFilter",
     "EventFilterCriteria",
     "PasswordValidator",

@@ -1,5 +1,5 @@
-from typing import List
 from pydantic import BaseModel
+
 from .event_response import EventResponse
 from .filter_criteria_schema import FilterCriteriaSchema
 
@@ -9,4 +9,4 @@ class FilteredEventsResponse(BaseModel):
 
     total: int
     filters_applied: FilterCriteriaSchema
-    events: List[EventResponse]
+    events: list[EventResponse]

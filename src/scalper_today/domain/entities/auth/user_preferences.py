@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from .language import Language
 from .currency import Currency
+from .language import Language
 from .timezone_enum import Timezone
 
 

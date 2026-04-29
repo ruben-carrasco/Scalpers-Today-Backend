@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import List
 
 from scalper_today.domain.entities import DeviceToken
 
@@ -10,7 +9,7 @@ class IDeviceTokenRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_user_id(self, user_id: str, active_only: bool = True) -> List[DeviceToken]:
+    async def get_by_user_id(self, user_id: str, active_only: bool = True) -> list[DeviceToken]:
         pass
 
     @abstractmethod

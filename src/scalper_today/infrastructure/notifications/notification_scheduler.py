@@ -1,12 +1,13 @@
 import asyncio
+import contextlib
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Set, List, Optional
+from datetime import UTC, datetime, timedelta
 
 import pytz
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from scalper_today.domain.entities import Alert, AlertCondition, EconomicEvent, AlertType
+from scalper_today.domain.entities import Alert, AlertCondition, AlertType, EconomicEvent
+
 from .expo import ExpoPushService
 
 logger = logging.getLogger(__name__)
@@ -28,9 +29,9 @@ class NotificationScheduler:
         self.notify_before = timedelta(minutes=notify_before_minutes)
 
         self._running = False
-        self._task: Optional[asyncio.Task] = None
-        self._notified_events: Dict[str, Set[str]] = {}  # event_id -> set of notified user_ids
-        self._last_check_date: Optional[object] = None  # date of last check, for daily cache reset
+        self._task: asyncio.Task | None = None
+        self._notified_events: dict[str, set[str]] = {}  # event_id -> set of notified user_ids
+        self._last_check_date: object | None = None  # date of last check, for daily cache reset
 
     async def start(self):
         if self._running:
@@ -47,10 +48,8 @@ class NotificationScheduler:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         logger.info("📅 Notification scheduler stopped")
 
     async def _run_loop(self):
@@ -64,7 +63,7 @@ class NotificationScheduler:
 
     async def _check_and_notify(self):
         self._cleanup_notified_cache()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # Ventana: 5 minutos antes del evento hasta 1 minuto después
         notify_window_start = now
         notify_window_end = now + self.notify_before + timedelta(minutes=1)
@@ -140,7 +139,7 @@ class NotificationScheduler:
                 await self._process_event_notifications(session, event, all_alerts)
 
     async def _process_event_notifications(
-        self, session: AsyncSession, event: EconomicEvent, alerts: List[Alert]
+        self, session: AsyncSession, event: EconomicEvent, alerts: list[Alert]
     ):
         event_id = event.id or f"{event.country}_{event.title}_{event.time}"
 
@@ -149,7 +148,7 @@ class NotificationScheduler:
         )
 
         # Track users to notify for this event
-        users_to_notify: Set[str] = set()
+        users_to_notify: set[str] = set()
 
         for alert in alerts:
             user_id = alert.user_id
@@ -230,7 +229,7 @@ class NotificationScheduler:
         for alert in alerts:
             if alert.user_id in users_to_notify and self._alert_matches_event(alert, event):
                 alert.trigger_count += 1
-                alert.last_triggered_at = datetime.now(timezone.utc)
+                alert.last_triggered_at = datetime.now(UTC)
                 await alert_repo.update(alert)
 
         # Clean up old notified events (older than 1 day)
@@ -298,7 +297,7 @@ class NotificationScheduler:
 
         return False
 
-    def _parse_numeric(self, value: str) -> Optional[float]:
+    def _parse_numeric(self, value: str) -> float | None:
         if not value:
             return None
 
@@ -311,7 +310,7 @@ class NotificationScheduler:
         except ValueError:
             return None
 
-    def _parse_event_time(self, time_str: str, event_date) -> Optional[datetime]:
+    def _parse_event_time(self, time_str: str, event_date) -> datetime | None:
         if not time_str:
             return None
 

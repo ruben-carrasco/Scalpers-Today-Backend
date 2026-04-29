@@ -1,30 +1,37 @@
 import logging
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..schemas import (
-    CreateAlertRequest,
-    UpdateAlertRequest,
-    AlertResponse,
-    RegisterDeviceTokenRequest,
-    DeviceTokenResponse,
-    ErrorResponse,
-    AlertConditionSchema,
-)
-from .auth import get_current_user_dep
-from scalper_today.domain.usecases import (
-    CreateAlertUseCase,
-    CreateAlertRequest as CreateAlertReq,
-    ListUserAlertsUseCase,
-    UpdateAlertUseCase,
-    UpdateAlertRequest as UpdateAlertReq,
-    DeleteAlertUseCase,
-    RegisterDeviceTokenUseCase,
-    RegisterDeviceTokenRequest as RegisterDeviceReq,
-)
 from scalper_today.api.dependencies import Container, get_container
 from scalper_today.domain.entities import User
+from scalper_today.domain.usecases import (
+    CreateAlertRequest as CreateAlertReq,
+)
+from scalper_today.domain.usecases import (
+    CreateAlertUseCase,
+    DeleteAlertUseCase,
+    ListUserAlertsUseCase,
+    RegisterDeviceTokenUseCase,
+    UpdateAlertUseCase,
+)
+from scalper_today.domain.usecases import (
+    RegisterDeviceTokenRequest as RegisterDeviceReq,
+)
+from scalper_today.domain.usecases import (
+    UpdateAlertRequest as UpdateAlertReq,
+)
+
+from ..schemas import (
+    AlertConditionSchema,
+    AlertResponse,
+    CreateAlertRequest,
+    DeviceTokenResponse,
+    ErrorResponse,
+    RegisterDeviceTokenRequest,
+    UpdateAlertRequest,
+)
+from .auth import get_current_user_dep
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +107,7 @@ async def create_alert(
 
 @router.get(
     "/",
-    response_model=List[AlertResponse],
+    response_model=list[AlertResponse],
     status_code=status.HTTP_200_OK,
     responses={
         200: {"description": "List of user alerts"},
@@ -261,7 +268,7 @@ async def register_device_token(
 
 @router.get(
     "/device-tokens",
-    response_model=List[DeviceTokenResponse],
+    response_model=list[DeviceTokenResponse],
     status_code=status.HTTP_200_OK,
     responses={
         200: {"description": "List of user device tokens"},

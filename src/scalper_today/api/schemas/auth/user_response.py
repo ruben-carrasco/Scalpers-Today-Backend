@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 from .user_preferences_response import UserPreferencesResponse
@@ -9,7 +7,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: str
-    avatar_url: Optional[str] = None
+    avatar_url: str | None = None
     preferences: UserPreferencesResponse
     is_verified: bool = False
 
