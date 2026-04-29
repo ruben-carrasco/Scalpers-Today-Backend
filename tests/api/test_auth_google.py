@@ -31,5 +31,4 @@ def test_google_login_invalid_token(client):
     ):
         response = client.post("/api/v1/auth/google", json={"id_token": "fake-token"})
         assert response.status_code == 401
-        print(response.json())
         assert "Invalid Google token" in response.json()["detail"]["message"]

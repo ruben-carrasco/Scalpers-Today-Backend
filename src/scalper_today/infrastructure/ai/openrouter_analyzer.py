@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 
 import httpx
 
@@ -330,20 +331,34 @@ class OpenRouterAnalyzer(IAIAnalyzer):
     @staticmethod
     def _parse_json(content: str) -> dict | None:
         clean = content.strip()
+        decoder = json.JSONDecoder()
 
-        # Try to find JSON block with regex
-        import re
+        for candidate in OpenRouterAnalyzer._json_candidates(content):
+            try:
+                parsed, _ = decoder.raw_decode(candidate)
+            except json.JSONDecodeError:
+                continue
 
-        json_match = re.search(r"(\{.*\}|\[.*\])", clean, re.DOTALL)
-        if json_match:
-            clean = json_match.group(1)
+            if isinstance(parsed, dict):
+                return parsed
+            if candidate == clean:
+                return None
 
-        try:
-            return json.loads(clean)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            logger.debug(f"Raw content: {content[:500]}")
-            return None
+        logger.error("JSON parse error: no valid JSON object found")
+        logger.debug(f"Raw content: {content[:500]}")
+        return None
+
+    @staticmethod
+    def _json_candidates(content: str) -> list[str]:
+        clean = content.strip()
+        candidates = [clean]
+
+        fenced_blocks = re.findall(r"```(?:json)?\s*(.*?)```", clean, re.DOTALL | re.IGNORECASE)
+        candidates.extend(block.strip() for block in fenced_blocks)
+
+        candidates.extend(clean[index:].strip() for index, char in enumerate(clean) if char == "{")
+
+        return candidates
 
     @staticmethod
     def _build_quick_analysis_prompt(events_data: list) -> str:

@@ -18,8 +18,6 @@ class CreateAlertUseCase:
         name = request.name.strip() if request.name else ""
         description = request.description.strip() if request.description else None
         conditions = []
-        alert = None
-        created_alert = None
 
         if not name:
             raise ValidationError("Alert name is required")

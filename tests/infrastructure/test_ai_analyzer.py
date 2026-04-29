@@ -27,9 +27,35 @@ async def test_parse_json_with_markdown_blocks(analyzer):
     content = (
         'Aquí tienes el análisis:\n```json\n{"0": {"resumen": "test"}}\n```\nEspero que te sirva.'
     )
-    # El método _parse_json es estático
     result = analyzer._parse_json(content)
     assert result == {"0": {"resumen": "test"}}
+
+
+@pytest.mark.asyncio
+async def test_parse_json_ignores_text_braces_before_fenced_json(analyzer):
+    content = (
+        'Nota: usa {macro} como contexto.\n```json\n{"0": {"resumen": "test"}}\n```\nFin {ruido}.'
+    )
+
+    result = analyzer._parse_json(content)
+
+    assert result == {"0": {"resumen": "test"}}
+
+
+@pytest.mark.asyncio
+async def test_parse_json_uses_first_valid_object_after_invalid_braces(analyzer):
+    content = 'Texto inicial {no valido} y luego {"0": {"resumen": "test"}}'
+
+    result = analyzer._parse_json(content)
+
+    assert result == {"0": {"resumen": "test"}}
+
+
+@pytest.mark.asyncio
+async def test_parse_json_rejects_list_payloads(analyzer):
+    result = analyzer._parse_json('[{"resumen": "test"}]')
+
+    assert result is None
 
 
 @pytest.mark.asyncio
