@@ -58,9 +58,28 @@ class UserRepository(IUserRepository):
         stmt = select(UserModel).where(UserModel.id == user.id)
         result = await self.session.execute(stmt)
         user_model = result.scalar_one_or_none()
+        if user_model:
+            user_model.name = user.name
+            user_model.preferences = json.dumps(self._preferences_to_dict(user.preferences))
+            await self.session.commit()
+            return user
+        raise ValueError(f"User {user.id} not found")
 
-        if not user_model:
-            raise ValueError(f"User not found: {user.id}")
+    async def create_from_oauth(self, email: str, name: str, provider: str) -> User:
+        import uuid
+
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            hashed_password="oauth_user",
+            name=name,
+            is_verified=True,
+            preferences=UserPreferences(
+                language=Language.EN, currency=Currency.USD, timezone=Timezone.UTC
+            ),
+        )
+        await self.create(user)
+        return user
 
         # Update fields
         user_model.email = user.email

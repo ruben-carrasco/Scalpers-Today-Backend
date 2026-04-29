@@ -27,3 +27,4 @@ python-dotenv>=1.0.0
 
 # Production Server
 gunicorn>=21.2.0
+google-auth>=2.29.0
