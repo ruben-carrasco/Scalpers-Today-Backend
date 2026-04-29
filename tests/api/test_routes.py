@@ -8,6 +8,9 @@ from scalper_today.api.app import create_app
 from scalper_today.api.dependencies.container import get_container
 from scalper_today.api.schemas import WeekEventResponse
 from scalper_today.domain.entities import AIAnalysis, EconomicEvent, Importance
+from scalper_today.domain.usecases.events.backfill_event_analysis import (
+    BackfillEventAnalysisResult,
+)
 
 
 def test_health_check(client):
@@ -197,6 +200,94 @@ def test_week_events_refresh_accepts_date_range_params():
         force_refresh=True,
         start_date=datetime(2026, 4, 29).date(),
         end_date=datetime(2026, 5, 1).date(),
+    )
+
+
+def test_backfill_event_analysis_requires_api_key():
+    fake_container = SimpleNamespace(
+        settings=SimpleNamespace(refresh_api_key="secret"),
+        backfill_event_analysis=AsyncMock(),
+    )
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.post("/api/v1/events/analysis/backfill")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 403
+    fake_container.backfill_event_analysis.assert_not_awaited()
+
+
+def test_backfill_event_analysis_defaults_to_today_quick_only():
+    fake_container = SimpleNamespace(
+        settings=SimpleNamespace(refresh_api_key="secret"),
+        backfill_event_analysis=AsyncMock(
+            return_value=BackfillEventAnalysisResult(
+                total_events=3,
+                quick_requested=2,
+                quick_saved=2,
+                deep_requested=0,
+                deep_saved=0,
+            )
+        ),
+    )
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.post(
+            "/api/v1/events/analysis/backfill",
+            headers={"X-API-Key": "secret"},
+        )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "message": "Backfilled AI analysis for 2 stored events",
+        "total_events": 3,
+        "quick_requested": 2,
+        "quick_saved": 2,
+        "deep_requested": 0,
+        "deep_saved": 0,
+    }
+    fake_container.backfill_event_analysis.assert_awaited_once_with(
+        start_date=None,
+        end_date=None,
+        include_deep=False,
+    )
+
+
+def test_backfill_event_analysis_accepts_date_range_and_deep_flag():
+    fake_container = SimpleNamespace(
+        settings=SimpleNamespace(refresh_api_key="secret"),
+        backfill_event_analysis=AsyncMock(
+            return_value=BackfillEventAnalysisResult(
+                total_events=3,
+                quick_requested=0,
+                quick_saved=0,
+                deep_requested=1,
+                deep_saved=1,
+            )
+        ),
+    )
+    app = create_app()
+    app.dependency_overrides[get_container] = lambda: fake_container
+
+    with TestClient(app) as test_client:
+        response = test_client.post(
+            "/api/v1/events/analysis/backfill"
+            "?startDate=2026-04-29&endDate=2026-05-01&includeDeep=true",
+            headers={"X-API-Key": "secret"},
+        )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    fake_container.backfill_event_analysis.assert_awaited_once_with(
+        start_date=datetime(2026, 4, 29).date(),
+        end_date=datetime(2026, 5, 1).date(),
+        include_deep=True,
     )
 
 

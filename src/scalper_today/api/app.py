@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 API_KEY_PROTECTED_PATHS = {
     "/api/v1/macro/refresh",
     "/api/v1/events/week/refresh",
+    "/api/v1/events/analysis/backfill",
 }
 JWT_PROTECTED_PATHS = {
     "/api/v1/auth/me",
@@ -125,7 +126,7 @@ def create_app() -> FastAPI:
         },
         {
             "name": "Admin - Refresh",
-            "description": "Manual cache refresh endpoints. Requires the `X-API-Key` header.",
+            "description": "Manual cache refresh and AI maintenance endpoints. Requires the `X-API-Key` header.",
         },
         {
             "name": "Alerts",
