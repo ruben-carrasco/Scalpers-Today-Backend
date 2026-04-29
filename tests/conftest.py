@@ -9,6 +9,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 from fastapi.testclient import TestClient
 from scalper_today.api.app import app
+from scalper_today.api.routes.events import _reset_refresh_rate_limit
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limit():
+    _reset_refresh_rate_limit()
+    yield
 
 
 @pytest.fixture

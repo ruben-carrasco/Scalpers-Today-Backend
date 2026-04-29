@@ -71,6 +71,11 @@ def _check_refresh_rate_limit(request: Request) -> None:
     _refresh_rate_limit_store[key].append(now)
 
 
+def _reset_refresh_rate_limit() -> None:
+    """Helper for tests to clear the rate limit store."""
+    _refresh_rate_limit_store.clear()
+
+
 def _resolve_event_range(
     start_date: Optional[date],
     end_date: Optional[date],
