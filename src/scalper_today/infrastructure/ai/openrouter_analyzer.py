@@ -331,15 +331,12 @@ class OpenRouterAnalyzer(IAIAnalyzer):
     def _parse_json(content: str) -> dict | None:
         clean = content.strip()
 
-        if clean.startswith("```"):
-            lines = clean.split("\n")
-            lines = lines[1:]
-            clean = "\n".join(lines)
+        # Try to find JSON block with regex
+        import re
 
-        if clean.endswith("```"):
-            clean = clean[:-3]
-
-        clean = clean.strip()
+        json_match = re.search(r"(\{.*\}|\[.*\])", clean, re.DOTALL)
+        if json_match:
+            clean = json_match.group(1)
 
         try:
             return json.loads(clean)
