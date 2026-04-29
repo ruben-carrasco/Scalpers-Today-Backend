@@ -16,7 +16,7 @@ def auth_header(client):
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_create_alert(client, auth_header):
+def _create_alert(client, auth_header) -> str:
     payload = {
         "name": "US High Impact",
         "description": "Notify me for US high impact events",
@@ -34,9 +34,13 @@ def test_create_alert(client, auth_header):
     return data["id"]
 
 
+def test_create_alert(client, auth_header):
+    _create_alert(client, auth_header)
+
+
 def test_list_alerts(client, auth_header):
     # Ensure there is at least one alert
-    test_create_alert(client, auth_header)
+    _create_alert(client, auth_header)
 
     response = client.get("/api/v1/alerts", headers=auth_header)
     assert response.status_code == 200
@@ -44,7 +48,7 @@ def test_list_alerts(client, auth_header):
 
 
 def test_update_alert(client, auth_header):
-    alert_id = test_create_alert(client, auth_header)
+    alert_id = _create_alert(client, auth_header)
 
     update_payload = {
         "name": "Updated Name",
@@ -58,7 +62,7 @@ def test_update_alert(client, auth_header):
 
 
 def test_delete_alert(client, auth_header):
-    alert_id = test_create_alert(client, auth_header)
+    alert_id = _create_alert(client, auth_header)
 
     response = client.delete(f"/api/v1/alerts/{alert_id}", headers=auth_header)
     assert response.status_code == 204
