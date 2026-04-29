@@ -4,7 +4,11 @@ from datetime import datetime, timezone
 from scalper_today.domain.entities import Alert, AlertCondition, AlertType, AlertStatus
 from scalper_today.domain.dtos import UpdateAlertRequest
 from scalper_today.domain.interfaces import IAlertRepository
-from scalper_today.domain.exceptions import ResourceNotFoundError, PermissionDeniedError, ValidationError
+from scalper_today.domain.exceptions import (
+    ResourceNotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +26,9 @@ class UpdateAlertUseCase:
             raise ResourceNotFoundError("Alert", request.alert_id)
 
         if alert.user_id != request.user_id:
-            raise PermissionDeniedError("You don't have permission to update this alert", action="update_alert")
+            raise PermissionDeniedError(
+                "You don't have permission to update this alert", action="update_alert"
+            )
 
         if request.name is not None:
             name_empty = not request.name or len(request.name.strip()) == 0

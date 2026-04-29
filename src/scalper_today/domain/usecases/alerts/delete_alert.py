@@ -17,7 +17,9 @@ class DeleteAlertUseCase:
             raise ResourceNotFoundError("Alert", alert_id)
 
         if alert.user_id != user_id:
-            raise PermissionDeniedError("You don't have permission to delete this alert", action="delete_alert")
+            raise PermissionDeniedError(
+                "You don't have permission to delete this alert", action="delete_alert"
+            )
 
         success = await self.alert_repository.delete(alert_id, soft_delete=soft_delete)
 
