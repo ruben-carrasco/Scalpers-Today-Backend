@@ -1,8 +1,8 @@
-from datetime import date, datetime
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytz
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from scalper_today.domain.entities import EconomicEvent, Importance
 from scalper_today.domain.entities.alerts import Alert, AlertCondition, AlertStatus, AlertType
