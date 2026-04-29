@@ -32,8 +32,10 @@ class GetMacroEventsUseCase:
             if cache_valid:
                 cached_events = await self._repository.get_events_by_date(self._target_date)
                 if cached_events:
-                    logger.info(f"Cache valid, returning {len(cached_events)} events from database")
-                    return cached_events
+                    logger.info(
+                        f"Cache valid, completing missing analysis for {len(cached_events)} events"
+                    )
+                    return await self._complete_missing_analysis(cached_events)
 
             cached_events = await self._repository.get_events_by_date(self._target_date)
             if cached_events:
@@ -46,7 +48,8 @@ class GetMacroEventsUseCase:
 
         if not scraped_events:
             logger.warning("No events fetched from provider")
-            return await self._repository.get_events_by_date(self._target_date)
+            cached_events = await self._repository.get_events_by_date(self._target_date)
+            return await self._complete_missing_analysis(cached_events)
 
         logger.info(f"Scraped {len(scraped_events)} events")
 
@@ -56,7 +59,13 @@ class GetMacroEventsUseCase:
         all_events = await self._repository.get_events_by_date(self._target_date)
         logger.info(f"Loaded {len(all_events)} events from database")
 
-        events_needing_quick = [e for e in all_events if e.ai_analysis is None]
+        return await self._complete_missing_analysis(all_events)
+
+    async def _complete_missing_analysis(self, events: List[EconomicEvent]) -> List[EconomicEvent]:
+        if not events:
+            return []
+
+        events_needing_quick = [e for e in events if e.ai_analysis is None]
 
         if events_needing_quick:
             logger.info(f"Performing quick analysis on {len(events_needing_quick)} events")
@@ -72,7 +81,7 @@ class GetMacroEventsUseCase:
         else:
             logger.info("All events already have quick analysis")
 
-        high_impact_events = [e for e in all_events if e.is_high_impact]
+        high_impact_events = [e for e in events if e.is_high_impact]
         high_impact_needing_deep = [
             e for e in high_impact_events if not (e.ai_analysis and e.ai_analysis.is_deep_analysis)
         ]
