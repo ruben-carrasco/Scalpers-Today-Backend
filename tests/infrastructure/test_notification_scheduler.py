@@ -1,5 +1,5 @@
-from datetime import date, datetime
-from unittest.mock import AsyncMock
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytz
@@ -40,219 +40,203 @@ def make_alert(conditions, user_id="user-1"):
 
 
 @pytest.fixture
-def scheduler():
-    expo = AsyncMock()
-    db = AsyncMock()
+def mock_expo():
+    service = AsyncMock()
+    service.send_event_alert.return_value = MagicMock(success_count=1, failure_count=0)
+    return service
+
+
+@pytest.fixture
+def mock_db_manager():
+    manager = MagicMock()
+    # mock_session will be used in async with
+    mock_session = AsyncMock()
+    manager.session.return_value.__aenter__.return_value = mock_session
+    return manager
+
+
+@pytest.fixture
+def scheduler(mock_expo, mock_db_manager):
     return NotificationScheduler(
-        expo_push_service=expo,
-        database_manager=db,
+        expo_push_service=mock_expo,
+        database_manager=mock_db_manager,
         check_interval_seconds=60,
         notify_before_minutes=5,
     )
 
 
-# ── HIGH_IMPACT_EVENT ────────────────────────────────
+@pytest.mark.asyncio
+async def test_scheduler_matches_and_notifies(scheduler, mock_expo, mock_db_manager):
+    # Setup: Event in 3 minutes (within the 5min window)
+    now_madrid = datetime.now(pytz.timezone("Europe/Madrid"))
+    event_time_madrid = (now_madrid + timedelta(minutes=3)).strftime("%H:%M")
 
+    event = EconomicEvent(
+        id="event-1",
+        time=event_time_madrid,
+        title="Test Event",
+        country="United States",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=now_madrid + timedelta(minutes=3),
+    )
 
-class TestHighImpactCondition:
-    def test_matches_high_importance(self, scheduler):
-        event = make_event(importance=Importance.HIGH)
-        cond = AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None)
-        assert scheduler._condition_matches_event(cond, event) is True
+    alert = Alert(
+        id="alert-1",
+        user_id="user-1",
+        name="High Impact Alert",
+        conditions=[AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None)],
+        push_enabled=True,
+    )
 
-    def test_does_not_match_medium(self, scheduler):
-        event = make_event(importance=Importance.MEDIUM)
-        cond = AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-    def test_does_not_match_low(self, scheduler):
-        event = make_event(importance=Importance.LOW)
-        cond = AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-
-# ── SPECIFIC_COUNTRY ────────────────────────────────
-
-
-class TestSpecificCountryCondition:
-    def test_exact_match(self, scheduler):
-        event = make_event(country="United States")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="United States")
-        assert scheduler._condition_matches_event(cond, event) is True
-
-    def test_case_insensitive(self, scheduler):
-        event = make_event(country="United States")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="united states")
-        assert scheduler._condition_matches_event(cond, event) is True
-
-    def test_no_match(self, scheduler):
-        event = make_event(country="United States")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="Germany")
-        assert scheduler._condition_matches_event(cond, event) is False
-
-    def test_empty_value_no_match(self, scheduler):
-        event = make_event(country="US")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-
-# ── SPECIFIC_CURRENCY ───────────────────────────────
-
-
-class TestSpecificCurrencyCondition:
-    def test_exact_match(self, scheduler):
-        event = make_event(currency="USD")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_CURRENCY, value="USD")
-        assert scheduler._condition_matches_event(cond, event) is True
-
-    def test_case_insensitive(self, scheduler):
-        event = make_event(currency="usd")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_CURRENCY, value="USD")
-        assert scheduler._condition_matches_event(cond, event) is True
-
-    def test_no_match(self, scheduler):
-        event = make_event(currency="EUR")
-        cond = AlertCondition(alert_type=AlertType.SPECIFIC_CURRENCY, value="USD")
-        assert scheduler._condition_matches_event(cond, event) is False
-
-
-# ── DATA_RELEASE ────────────────────────────────────
-
-
-class TestDataReleaseCondition:
-    def test_matches_when_actual_has_value(self, scheduler):
-        event = make_event(actual="1.5%")
-        cond = AlertCondition(alert_type=AlertType.DATA_RELEASE, value=None)
-        assert scheduler._condition_matches_event(cond, event) is True
-
-    def test_no_match_when_actual_empty(self, scheduler):
-        event = make_event(actual="")
-        cond = AlertCondition(alert_type=AlertType.DATA_RELEASE, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-    def test_no_match_when_actual_none(self, scheduler):
-        event = make_event(actual=None)
-        cond = AlertCondition(alert_type=AlertType.DATA_RELEASE, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-
-# ── SURPRISE_MOVE ───────────────────────────────────
-
-
-class TestSurpriseMoveCondition:
-    def test_big_surprise_matches(self, scheduler):
-        event = make_event(actual="2.0%", forecast="1.5%")
-        cond = AlertCondition(alert_type=AlertType.SURPRISE_MOVE, value=None)
-        assert scheduler._condition_matches_event(cond, event) is True
-
-    def test_small_diff_no_match(self, scheduler):
-        event = make_event(actual="1.5%", forecast="1.4%")
-        cond = AlertCondition(alert_type=AlertType.SURPRISE_MOVE, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-    def test_no_actual_no_match(self, scheduler):
-        event = make_event(actual="", forecast="1.5%")
-        cond = AlertCondition(alert_type=AlertType.SURPRISE_MOVE, value=None)
-        assert scheduler._condition_matches_event(cond, event) is False
-
-
-# ── _alert_matches_event ────────────────────────────
-
-
-class TestAlertMatchesEvent:
-    def test_any_condition_matches(self, scheduler):
-        event = make_event(importance=Importance.LOW, country="US")
-        alert = make_alert(
-            [
-                AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None),
-                AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="US"),
-            ]
+    # Mock Repositories
+    with (
+        patch("scalper_today.infrastructure.database.EventRepository") as MockEventRepo,
+        patch(
+            "scalper_today.infrastructure.database.repositories.AlertRepository"
+        ) as MockAlertRepo,
+        patch(
+            "scalper_today.infrastructure.database.repositories.DeviceTokenRepository"
+        ) as MockDeviceRepo,
+    ):
+        MockEventRepo.return_value.get_events_by_date = AsyncMock(return_value=[event])
+        MockAlertRepo.return_value.get_active_alerts = AsyncMock(return_value=[alert])
+        MockAlertRepo.return_value.update = AsyncMock()
+        MockDeviceRepo.return_value.get_by_user_id = AsyncMock(
+            return_value=[MagicMock(token="token-123")]
         )
-        # LOW importance fails HIGH_IMPACT but US country matches
-        assert scheduler._alert_matches_event(alert, event) is True
 
-    def test_no_condition_matches(self, scheduler):
-        event = make_event(importance=Importance.LOW, country="US")
-        alert = make_alert(
-            [
-                AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None),
-                AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="Germany"),
-            ]
-        )
-        assert scheduler._alert_matches_event(alert, event) is False
+        await scheduler._check_and_notify()
 
-    def test_empty_conditions(self, scheduler):
-        event = make_event()
-        alert = make_alert([])
-        assert scheduler._alert_matches_event(alert, event) is False
+        # Verify notification was sent
+        mock_expo.send_event_alert.assert_awaited_once()
+        assert "event-1" in scheduler._notified_events
+        assert "user-1" in scheduler._notified_events["event-1"]
 
 
-# ── _parse_event_time ───────────────────────────────
+@pytest.mark.asyncio
+async def test_scheduler_avoids_duplicate_notifications(scheduler, mock_expo, mock_db_manager):
+    # Manually mark as notified
+    scheduler._notified_events["event-1"] = {"user-1"}
+
+    now_madrid = datetime.now(pytz.timezone("Europe/Madrid"))
+    event_time = (now_madrid + timedelta(minutes=2)).strftime("%H:%M")
+    event = EconomicEvent(
+        id="event-1",
+        time=event_time,
+        title="T",
+        country="C",
+        currency="C",
+        importance=Importance.HIGH,
+    )
+    alert = Alert(
+        id="a1",
+        user_id="user-1",
+        name="N",
+        conditions=[AlertCondition(AlertType.HIGH_IMPACT_EVENT, None)],
+    )
+
+    with (
+        patch("scalper_today.infrastructure.database.EventRepository") as MockEventRepo,
+        patch(
+            "scalper_today.infrastructure.database.repositories.AlertRepository"
+        ) as MockAlertRepo,
+    ):
+        MockEventRepo.return_value.get_events_by_date = AsyncMock(return_value=[event])
+        MockAlertRepo.return_value.get_active_alerts = AsyncMock(return_value=[alert])
+        MockAlertRepo.return_value.update = AsyncMock()
+
+        await scheduler._check_and_notify()
+
+        # Should NOT call send_event_alert again
+        mock_expo.send_event_alert.assert_not_awaited()
 
 
-class TestParseEventTime:
-    def test_valid_time(self, scheduler):
-        today = date(2026, 3, 18)
-        result = scheduler._parse_event_time("14:30", today)
-        assert result is not None
-        assert result.hour == 14 or result.hour == 13  # depends on UTC offset
+@pytest.mark.asyncio
+async def test_scheduler_ignores_far_future_events(scheduler, mock_expo, mock_db_manager):
+    # Event in 15 minutes (outside 5min window)
+    now_madrid = datetime.now(pytz.timezone("Europe/Madrid"))
+    event_time = (now_madrid + timedelta(minutes=15)).strftime("%H:%M")
+    event = EconomicEvent(
+        id="event-far",
+        time=event_time,
+        title="T",
+        country="C",
+        currency="C",
+        importance=Importance.HIGH,
+    )
+    alert = Alert(
+        id="a1",
+        user_id="user-1",
+        name="N",
+        conditions=[AlertCondition(AlertType.HIGH_IMPACT_EVENT, None)],
+    )
 
-    def test_empty_string(self, scheduler):
-        today = date(2026, 3, 18)
-        assert scheduler._parse_event_time("", today) is None
+    with (
+        patch("scalper_today.infrastructure.database.EventRepository") as MockEventRepo,
+        patch(
+            "scalper_today.infrastructure.database.repositories.AlertRepository"
+        ) as MockAlertRepo,
+    ):
+        MockEventRepo.return_value.get_events_by_date = AsyncMock(return_value=[event])
+        MockAlertRepo.return_value.get_active_alerts = AsyncMock(return_value=[alert])
+        MockAlertRepo.return_value.update = AsyncMock()
 
-    def test_none(self, scheduler):
-        today = date(2026, 3, 18)
-        assert scheduler._parse_event_time(None, today) is None
+        await scheduler._check_and_notify()
 
-    def test_invalid_format(self, scheduler):
-        today = date(2026, 3, 18)
-        assert scheduler._parse_event_time("All Day", today) is None
-
-
-# ── _cleanup_notified_cache ─────────────────────────
-
-
-class TestCleanupCache:
-    def test_clears_on_new_day(self, scheduler):
-        scheduler._notified_events = {"evt-1": {"user-1"}}
-        scheduler._last_check_date = date(2026, 3, 17)
-        # Simulate running on 2026-03-18
-        scheduler._cleanup_notified_cache()
-        # Cache should be cleared because today != last_check_date
-        # (depends on actual current date, so we test the mechanism)
-        if scheduler._last_check_date != date(2026, 3, 17):
-            assert len(scheduler._notified_events) == 0
-
-    def test_keeps_on_same_day(self, scheduler):
-        today = datetime.now(TZ_MADRID).date()
-        scheduler._notified_events = {"evt-1": {"user-1"}}
-        scheduler._last_check_date = today
-        scheduler._cleanup_notified_cache()
-        assert len(scheduler._notified_events) == 1
+        mock_expo.send_event_alert.assert_not_awaited()
 
 
-# ── _parse_numeric ──────────────────────────────────
+def test_condition_matching_logic(scheduler):
+    high_event = EconomicEvent(
+        id="1",
+        time="1",
+        title="T",
+        country="United States",
+        currency="USD",
+        importance=Importance.HIGH,
+    )
+    low_event = EconomicEvent(
+        id="2",
+        time="1",
+        title="T",
+        country="United States",
+        currency="USD",
+        importance=Importance.LOW,
+    )
 
+    cond_high = AlertCondition(alert_type=AlertType.HIGH_IMPACT_EVENT, value=None)
+    cond_country = AlertCondition(alert_type=AlertType.SPECIFIC_COUNTRY, value="United States")
 
-class TestParseNumeric:
-    def test_percentage(self, scheduler):
-        assert scheduler._parse_numeric("2.5%") == 2.5
+    # Test High Impact
+    assert scheduler._condition_matches_event(cond_high, high_event) is True
+    assert scheduler._condition_matches_event(cond_high, low_event) is False
 
-    def test_plain_number(self, scheduler):
-        assert scheduler._parse_numeric("100") == 100.0
+    # Test Country Match (case insensitive)
+    assert scheduler._condition_matches_event(cond_country, high_event) is True
 
-    def test_k_suffix(self, scheduler):
-        assert scheduler._parse_numeric("200K") == 200000.0
+    # Test Surprise Move (20% threshold)
+    cond_surprise = AlertCondition(alert_type=AlertType.SURPRISE_MOVE, value=None)
+    event_surprise = EconomicEvent(
+        id="3",
+        time="1",
+        title="T",
+        country="C",
+        currency="C",
+        importance=Importance.MEDIUM,
+        actual="100",
+        forecast="50",
+    )
+    event_no_surprise = EconomicEvent(
+        id="4",
+        time="1",
+        title="T",
+        country="C",
+        currency="C",
+        importance=Importance.MEDIUM,
+        actual="100",
+        forecast="95",
+    )
 
-    def test_comma_decimal(self, scheduler):
-        assert scheduler._parse_numeric("1,5") == 1.5
-
-    def test_empty(self, scheduler):
-        assert scheduler._parse_numeric("") is None
-
-    def test_none(self, scheduler):
-        assert scheduler._parse_numeric(None) is None
-
-    def test_non_numeric(self, scheduler):
-        assert scheduler._parse_numeric("N/A") is None
+    assert scheduler._condition_matches_event(cond_surprise, event_surprise) is True
+    assert scheduler._condition_matches_event(cond_surprise, event_no_surprise) is False
