@@ -1,6 +1,7 @@
 import logging
 
 from scalper_today.domain.interfaces import IAlertRepository
+from scalper_today.domain.exceptions import ResourceNotFoundError, PermissionDeniedError
 
 logger = logging.getLogger(__name__)
 
@@ -13,10 +14,10 @@ class DeleteAlertUseCase:
         alert = await self.alert_repository.get_by_id(alert_id)
 
         if not alert:
-            raise ValueError(f"Alert not found: {alert_id}")
+            raise ResourceNotFoundError("Alert", alert_id)
 
         if alert.user_id != user_id:
-            raise PermissionError("You don't have permission to delete this alert")
+            raise PermissionDeniedError("You don't have permission to delete this alert", action="delete_alert")
 
         success = await self.alert_repository.delete(alert_id, soft_delete=soft_delete)
 

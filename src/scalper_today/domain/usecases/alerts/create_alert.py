@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from scalper_today.domain.entities import Alert, AlertCondition, AlertType, AlertStatus
 from scalper_today.domain.dtos import CreateAlertRequest
 from scalper_today.domain.interfaces import IAlertRepository
+from scalper_today.domain.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,10 @@ class CreateAlertUseCase:
         created_alert = None
 
         if not name:
-            raise ValueError("Alert name is required")
+            raise ValidationError("Alert name is required")
 
         if len(request.name) > 200:
-            raise ValueError("Alert name must be 200 characters or less")
+            raise ValidationError("Alert name must be 200 characters or less")
 
         if request.conditions:
             for cond_dict in request.conditions:
@@ -37,15 +38,15 @@ class CreateAlertUseCase:
                         AlertType.SPECIFIC_CURRENCY,
                     ]
                     if needs_value and not value:
-                        raise ValueError(f"Value required for {alert_type.value}")
+                        raise ValidationError(f"Value required for {alert_type.value}")
 
                     conditions.append(AlertCondition(alert_type=alert_type, value=value))
 
                 except (KeyError, ValueError) as e:
-                    raise ValueError(f"Invalid condition: {e}")
+                    raise ValidationError(f"Invalid condition: {e}")
 
         if not conditions:
-            raise ValueError("At least one condition is required")
+            raise ValidationError("At least one condition is required")
 
         alert = Alert(
             id=str(uuid.uuid4()),

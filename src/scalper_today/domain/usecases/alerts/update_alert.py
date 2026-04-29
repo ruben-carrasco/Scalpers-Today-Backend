@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from scalper_today.domain.entities import Alert, AlertCondition, AlertType, AlertStatus
 from scalper_today.domain.dtos import UpdateAlertRequest
 from scalper_today.domain.interfaces import IAlertRepository
+from scalper_today.domain.exceptions import ResourceNotFoundError, PermissionDeniedError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -18,19 +19,19 @@ class UpdateAlertUseCase:
         updated_alert = None
 
         if not alert:
-            raise ValueError(f"Alert not found: {request.alert_id}")
+            raise ResourceNotFoundError("Alert", request.alert_id)
 
         if alert.user_id != request.user_id:
-            raise PermissionError("You don't have permission to update this alert")
+            raise PermissionDeniedError("You don't have permission to update this alert", action="update_alert")
 
         if request.name is not None:
             name_empty = not request.name or len(request.name.strip()) == 0
             name_too_long = len(request.name) > 200
 
             if name_empty:
-                raise ValueError("Alert name cannot be empty")
+                raise ValidationError("Alert name cannot be empty")
             if name_too_long:
-                raise ValueError("Alert name must be 200 characters or less")
+                raise ValidationError("Alert name must be 200 characters or less")
 
             alert.name = request.name.strip()
 
@@ -48,15 +49,15 @@ class UpdateAlertUseCase:
                         AlertType.SPECIFIC_CURRENCY,
                     ]
                     if needs_value and not value:
-                        raise ValueError(f"Value required for {alert_type.value}")
+                        raise ValidationError(f"Value required for {alert_type.value}")
 
                     conditions.append(AlertCondition(alert_type=alert_type, value=value))
 
                 except (KeyError, ValueError) as e:
-                    raise ValueError(f"Invalid condition: {e}")
+                    raise ValidationError(f"Invalid condition: {e}")
 
             if not conditions:
-                raise ValueError("At least one condition is required")
+                raise ValidationError("At least one condition is required")
 
             alert.conditions = conditions
 
@@ -64,7 +65,7 @@ class UpdateAlertUseCase:
             try:
                 alert.status = AlertStatus(request.status)
             except ValueError:
-                raise ValueError(f"Invalid status: {request.status}")
+                raise ValidationError(f"Invalid status: {request.status}")
 
         if request.push_enabled is not None:
             alert.push_enabled = request.push_enabled
