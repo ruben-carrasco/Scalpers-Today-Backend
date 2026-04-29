@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from unittest.mock import AsyncMock
 
@@ -102,6 +104,38 @@ async def test_macro_events_cache_hit_skips_deep_ai_completion(
     mock_scraper.fetch_today_events.assert_not_called()
     mock_analyzer.analyze_events.assert_not_awaited()
     mock_analyzer.analyze_events_deep.assert_not_awaited()
+
+
+async def test_macro_events_cache_hit_returns_events_ordered(
+    mock_repo, mock_scraper, mock_analyzer
+):
+    mock_repo.is_cache_valid.return_value = True
+    late_event = EconomicEvent(
+        id="late",
+        time="14:00",
+        title="Late",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        ai_analysis=AIAnalysis(summary="Quick analysis", impact="High"),
+        _timestamp=datetime(2026, 4, 29, 14, 0),
+    )
+    early_event = EconomicEvent(
+        id="early",
+        time="10:00",
+        title="Early",
+        country="EU",
+        currency="EUR",
+        importance=Importance.MEDIUM,
+        ai_analysis=AIAnalysis(summary="Quick analysis", impact="Medium"),
+        _timestamp=datetime(2026, 4, 29, 10, 0),
+    )
+    mock_repo.get_events_by_date.return_value = [late_event, early_event]
+
+    usecase = GetMacroEventsUseCase(mock_scraper, mock_repo, mock_analyzer)
+    events = await usecase.execute(force_refresh=False)
+
+    assert [event.id for event in events] == ["early", "late"]
 
 
 async def test_macro_events_cache_miss_and_scrape(mock_repo, mock_scraper, mock_analyzer):

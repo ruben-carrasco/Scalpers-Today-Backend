@@ -73,7 +73,13 @@ class EventRepository(IEventRepository):
         if only_missing_analysis:
             query = query.where(EventModel.has_quick_analysis is False)
 
-        query = query.order_by(EventModel.time, EventModel.country, EventModel.importance.desc())
+        query = query.order_by(
+            EventModel.date,
+            EventModel.time,
+            EventModel.importance.desc(),
+            EventModel.country,
+            EventModel.title,
+        )
 
         result = await self._session.execute(query)
         models = result.scalars().all()
@@ -85,7 +91,11 @@ class EventRepository(IEventRepository):
             select(EventModel)
             .where(*self._range_clause(start_date, end_date))
             .order_by(
-                EventModel.date, EventModel.time, EventModel.country, EventModel.importance.desc()
+                EventModel.date,
+                EventModel.time,
+                EventModel.importance.desc(),
+                EventModel.country,
+                EventModel.title,
             )
         )
 
@@ -107,7 +117,13 @@ class EventRepository(IEventRepository):
         if only_missing_deep_analysis:
             query = query.where(EventModel.has_deep_analysis is False)
 
-        query = query.order_by(EventModel.time, EventModel.country, EventModel.importance.desc())
+        query = query.order_by(
+            EventModel.date,
+            EventModel.time,
+            EventModel.importance.desc(),
+            EventModel.country,
+            EventModel.title,
+        )
 
         result = await self._session.execute(query)
         models = result.scalars().all()

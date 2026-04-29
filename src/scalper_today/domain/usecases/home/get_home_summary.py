@@ -4,6 +4,7 @@ from typing import List, Optional
 import pytz
 
 from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
+from scalper_today.domain.usecases.events.event_ordering import sort_events
 
 TZ_MADRID = pytz.timezone("Europe/Madrid")
 
@@ -67,19 +68,20 @@ class GetHomeSummaryUseCase:
     ) -> HomeSummary:
         current_time = now or datetime.now(TZ_MADRID)
         current_time_str = current_time.strftime("%H:%M")
+        ordered_events = sort_events(events)
 
-        high, medium, low = self.count_by_importance(events)
+        high, medium, low = self.count_by_importance(ordered_events)
 
         return HomeSummary(
             greeting=self.get_greeting(current_time.hour),
             date_formatted=current_time.strftime("%A, %d de %B %Y"),
             time_formatted=current_time.strftime("%H:%M"),
-            total_events=len(events),
+            total_events=len(ordered_events),
             high_impact_count=high,
             medium_impact_count=medium,
             low_impact_count=low,
-            next_event=self.find_next_upcoming(events, current_time_str),
+            next_event=self.find_next_upcoming(ordered_events, current_time_str),
             sentiment=briefing.statistics.sentiment,
             volatility_level=briefing.statistics.volatility_level,
-            highlights=self.generate_highlights(events, current_time_str),
+            highlights=self.generate_highlights(ordered_events, current_time_str),
         )
