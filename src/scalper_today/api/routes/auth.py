@@ -7,12 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from scalper_today.api.dependencies import Container, get_container
-from scalper_today.domain.entities import User
+from scalper_today.domain.dtos.google_login import GoogleLoginRequest
 from scalper_today.domain.usecases import (
     GetCurrentUserUseCase,
     LoginUserUseCase,
     RegisterUserUseCase,
 )
+from scalper_today.domain.usecases.auth.google_login import GoogleLoginUseCase
 from scalper_today.domain.usecases import (
     LoginUserRequest as LoginUserReq,
 )
@@ -182,16 +183,23 @@ async def login(request: LoginRequest, container: ContainerDep, req: Request):
         )
 
 
-@router.get(
-    "/me",
-    response_model=UserResponse,
-    status_code=status.HTTP_200_OK,
-    responses={
-        200: {"description": "Current user data"},
-        401: {"model": ErrorResponse, "description": "Invalid or expired token"},
-    },
-    summary="Get current user",
-    description="Get authenticated user's profile information",
+@router.post(
+    "/google",
+    response_model=AuthResponse,
+    summary="Login with Google",
+    description="Authenticate with a Google ID token, creating the user if necessary.",
 )
-async def get_me(current_user: Annotated[User, Depends(get_current_user_dep)]) -> UserResponse:
-    return _map_user_to_response(current_user)
+async def google_login(request: GoogleLoginRequest, container: ContainerDep, req: Request):
+    _check_rate_limit(req, "google-login")
+    async with container.database_manager.session() as session:
+        user_repo = container.get_user_repository(session)
+        auth_service = container.get_jwt_service()
+        settings = container.settings
+        use_case = GoogleLoginUseCase(user_repo, auth_service, settings)
+
+        result = await use_case.execute(request.id_token)
+
+        return AuthResponse(
+            user=_map_user_to_response(result["user"]),
+            token=_map_token_to_response(result["token"]),
+        )

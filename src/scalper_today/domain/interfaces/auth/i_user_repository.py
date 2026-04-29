@@ -21,6 +21,10 @@ class IUserRepository(ABC):
         pass
 
     @abstractmethod
+    async def create_from_oauth(self, email: str, name: str, provider: str) -> User:
+        pass
+
+    @abstractmethod
     async def delete(self, user_id: str) -> bool:
         pass
 

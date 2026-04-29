@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,25 +57,28 @@ class UserRepository(IUserRepository):
         stmt = select(UserModel).where(UserModel.id == user.id)
         result = await self.session.execute(stmt)
         user_model = result.scalar_one_or_none()
+        if user_model:
+            user_model.name = user.name
+            user_model.preferences = json.dumps(self._preferences_to_dict(user.preferences))
+            await self.session.commit()
+            return user
+        raise ValueError(f"User {user.id} not found")
 
-        if not user_model:
-            raise ValueError(f"User not found: {user.id}")
+    async def create_from_oauth(self, email: str, name: str, provider: str) -> User:
+        import uuid
 
-        # Update fields
-        user_model.email = user.email
-        user_model.hashed_password = user.hashed_password
-        user_model.name = user.name
-        user_model.avatar_url = user.avatar_url
-        user_model.preferences = json.dumps(self._preferences_to_dict(user.preferences))
-        user_model.is_active = user.is_active
-        user_model.is_verified = user.is_verified
-        user_model.updated_at = datetime.now(UTC)
-
-        await self.session.flush()
-        await self.session.refresh(user_model)
-
-        logger.info(f"Updated user: {user.email}")
-        return self._to_entity(user_model)
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            hashed_password="oauth_user",
+            name=name,
+            is_verified=True,
+            preferences=UserPreferences(
+                language=Language.EN, currency=Currency.USD, timezone=Timezone.UTC
+            ),
+        )
+        await self.create(user)
+        return user
 
     async def delete(self, user_id: str) -> bool:
         stmt = select(UserModel).where(UserModel.id == user_id)
