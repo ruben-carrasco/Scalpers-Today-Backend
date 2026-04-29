@@ -76,7 +76,32 @@ async def test_macro_events_cache_hit_completes_missing_ai_without_provider(
     assert events[0].ai_analysis == analysis
     mock_scraper.fetch_today_events.assert_not_called()
     mock_analyzer.analyze_events.assert_awaited_once_with([cached_event])
+    mock_analyzer.analyze_events_deep.assert_not_awaited()
     mock_repo.save_events_batch.assert_awaited()
+
+
+async def test_macro_events_cache_hit_skips_deep_ai_completion(
+    mock_repo, mock_scraper, mock_analyzer
+):
+    mock_repo.is_cache_valid.return_value = True
+    cached_event = EconomicEvent(
+        id="1",
+        time="10:00",
+        title="Cached high impact",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        ai_analysis=AIAnalysis(summary="Quick analysis", impact="High"),
+    )
+    mock_repo.get_events_by_date.return_value = [cached_event]
+
+    usecase = GetMacroEventsUseCase(mock_scraper, mock_repo, mock_analyzer)
+    events = await usecase.execute(force_refresh=False)
+
+    assert events == [cached_event]
+    mock_scraper.fetch_today_events.assert_not_called()
+    mock_analyzer.analyze_events.assert_not_awaited()
+    mock_analyzer.analyze_events_deep.assert_not_awaited()
 
 
 async def test_macro_events_cache_miss_and_scrape(mock_repo, mock_scraper, mock_analyzer):
