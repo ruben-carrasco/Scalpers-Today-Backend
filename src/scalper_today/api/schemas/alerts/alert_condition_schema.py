@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -9,7 +8,7 @@ class AlertConditionSchema(BaseModel):
         description="Type of alert trigger",
         pattern="^(high_impact_event|specific_country|specific_currency|data_release|surprise_move)$",
     )
-    value: Optional[str] = Field(
+    value: str | None = Field(
         None, description="Condition value (e.g., country name, currency code)"
     )
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+
 from scalper_today.domain.entities import EconomicEvent
 
 
@@ -7,4 +7,4 @@ from scalper_today.domain.entities import EconomicEvent
 class UpcomingEventsResult:
     current_time: str
     count: int
-    events: List[EconomicEvent]
+    events: list[EconomicEvent]

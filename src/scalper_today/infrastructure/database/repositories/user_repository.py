@@ -1,12 +1,11 @@
 import json
 import logging
-from typing import Optional
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....domain.entities import User, UserPreferences, Language, Currency, Timezone
+from ....domain.entities import Currency, Language, Timezone, User, UserPreferences
 from ....domain.interfaces import IUserRepository
 from ..models import UserModel
 
@@ -37,7 +36,7 @@ class UserRepository(IUserRepository):
         logger.info(f"Created user: {user.email}")
         return self._to_entity(user_model)
 
-    async def get_by_id(self, user_id: str) -> Optional[User]:
+    async def get_by_id(self, user_id: str) -> User | None:
         stmt = select(UserModel).where(UserModel.id == user_id)
         result = await self.session.execute(stmt)
         user_model = result.scalar_one_or_none()
@@ -46,7 +45,7 @@ class UserRepository(IUserRepository):
             return self._to_entity(user_model)
         return None
 
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         stmt = select(UserModel).where(UserModel.email == email)
         result = await self.session.execute(stmt)
         user_model = result.scalar_one_or_none()
@@ -71,7 +70,7 @@ class UserRepository(IUserRepository):
         user_model.preferences = json.dumps(self._preferences_to_dict(user.preferences))
         user_model.is_active = user.is_active
         user_model.is_verified = user.is_verified
-        user_model.updated_at = datetime.now(timezone.utc)
+        user_model.updated_at = datetime.now(UTC)
 
         await self.session.flush()
         await self.session.refresh(user_model)

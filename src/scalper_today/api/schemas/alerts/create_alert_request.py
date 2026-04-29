@@ -1,4 +1,3 @@
-from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
@@ -7,8 +6,8 @@ from .alert_condition_schema import AlertConditionSchema
 
 class CreateAlertRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="Alert name")
-    description: Optional[str] = Field(None, description="Alert description")
-    conditions: List[AlertConditionSchema] = Field(
+    description: str | None = Field(None, description="Alert description")
+    conditions: list[AlertConditionSchema] = Field(
         ..., min_length=1, description="Alert conditions"
     )
     push_enabled: bool = Field(default=True, description="Enable push notifications")

@@ -1,7 +1,7 @@
 import logging
 import re
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import pytz
@@ -31,7 +31,7 @@ class RapidApiCalendarProvider(IEventProvider):
             return []
         return self._parse_payload(payload, start_date, end_date)
 
-    async def _fetch_payload(self, start_date: date, end_date: date) -> Optional[Any]:
+    async def _fetch_payload(self, start_date: date, end_date: date) -> Any | None:
         if not self._settings.rapidapi_calendar_key:
             logger.warning("RapidAPI calendar key is not configured")
             return None
@@ -101,7 +101,7 @@ class RapidApiCalendarProvider(IEventProvider):
 
     def _to_event(
         self, row: dict[str, Any], start_date: date, end_date: date
-    ) -> Optional[EconomicEvent]:
+    ) -> EconomicEvent | None:
         title = self._first_text(row, "title", "event", "name", "indicator")
         if not title:
             return None
@@ -142,7 +142,7 @@ class RapidApiCalendarProvider(IEventProvider):
             _timestamp=event_dt,
         )
 
-    def _extract_datetime(self, row: dict[str, Any]) -> Optional[datetime]:
+    def _extract_datetime(self, row: dict[str, Any]) -> datetime | None:
         raw_value = self._first_value(row, "dateUtc", "date", "datetime", "timestamp", "time")
         parsed = self._parse_datetime(raw_value)
         if parsed is not None:
@@ -154,7 +154,7 @@ class RapidApiCalendarProvider(IEventProvider):
             return None
         return self._parse_datetime(f"{date_text}T{time_text}")
 
-    def _parse_datetime(self, raw_value: Any) -> Optional[datetime]:
+    def _parse_datetime(self, raw_value: Any) -> datetime | None:
         text = self._safe_text(raw_value)
         if not text:
             return None
@@ -193,7 +193,7 @@ class RapidApiCalendarProvider(IEventProvider):
         return "neutral"
 
     @staticmethod
-    def _parse_number(raw: str) -> Optional[float]:
+    def _parse_number(raw: str) -> float | None:
         if not raw:
             return None
         text = raw.replace(",", "").replace(" ", "").strip().upper()

@@ -1,16 +1,17 @@
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from scalper_today.domain.entities import User, UserPreferences, Language, Currency, Timezone
 from scalper_today.domain.dtos import RegisterUserRequest, RegisterUserResponse
-from scalper_today.domain.interfaces import IUserRepository, IAuthService
+from scalper_today.domain.entities import Currency, Language, Timezone, User, UserPreferences
 from scalper_today.domain.exceptions import (
+    DuplicateEmailError,
     InvalidEmailError,
     WeakPasswordError,
-    DuplicateEmailError,
 )
+from scalper_today.domain.interfaces import IAuthService, IUserRepository
+
 from .password_validator import PasswordValidator
 
 logger = logging.getLogger(__name__)
@@ -82,8 +83,8 @@ class RegisterUserUseCase:
             preferences=preferences,
             is_active=True,
             is_verified=False,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         created_user = await self.user_repository.create(user)

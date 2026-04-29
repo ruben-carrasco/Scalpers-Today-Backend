@@ -1,8 +1,10 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 import httpx
+
 from scalper_today.domain.dtos.notifications.notification_result import NotificationResult
+
 from .expo_push_message import ExpoPushMessage
 
 logger = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ class ExpoPushService:
         return token.startswith("ExponentPushToken[") or token.startswith("ExpoPushToken[")
 
     async def send_notification(
-        self, tokens: List[str], title: str, body: str, data: Optional[Dict[str, Any]] = None
+        self, tokens: list[str], title: str, body: str, data: dict[str, Any] | None = None
     ) -> NotificationResult:
         if not tokens:
             logger.warning("No tokens provided for notification")
@@ -84,7 +86,7 @@ class ExpoPushService:
 
     async def send_event_alert(
         self,
-        tokens: List[str],
+        tokens: list[str],
         event_name: str,
         importance: int,
         country: str,
@@ -119,7 +121,7 @@ class ExpoPushService:
         return await self.send_notification(tokens=tokens, title=title, body=body, data=data)
 
     async def send_daily_briefing(
-        self, tokens: List[str], sentiment: str, high_impact_count: int
+        self, tokens: list[str], sentiment: str, high_impact_count: int
     ) -> NotificationResult:
         title = "📊 Resumen del Mercado"
         body = f"Hoy hay {high_impact_count} eventos de alto impacto. Sentimiento: {sentiment}"

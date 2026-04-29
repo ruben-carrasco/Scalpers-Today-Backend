@@ -1,10 +1,9 @@
 from datetime import datetime
-from typing import List, Optional
 
 import pytz
 
-from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.dtos import UpcomingEventsResult
+from scalper_today.domain.entities import EconomicEvent
 
 TZ_MADRID = pytz.timezone("Europe/Madrid")
 
@@ -14,9 +13,9 @@ class GetUpcomingEventsUseCase:
 
     def execute(
         self,
-        events: List[EconomicEvent],
+        events: list[EconomicEvent],
         limit: int = DEFAULT_LIMIT,
-        now: Optional[datetime] = None,
+        now: datetime | None = None,
     ) -> UpcomingEventsResult:
         current_time = now or datetime.now(TZ_MADRID)
         current_time_str = current_time.strftime("%H:%M")

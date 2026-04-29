@@ -1,9 +1,8 @@
 import json
 import logging
-from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....domain.entities import Alert, AlertCondition, AlertStatus, AlertType
@@ -40,7 +39,7 @@ class AlertRepository(IAlertRepository):
         logger.info(f"Created alert: {alert.name} for user {alert.user_id}")
         return self._to_entity(alert_model)
 
-    async def get_by_id(self, alert_id: str) -> Optional[Alert]:
+    async def get_by_id(self, alert_id: str) -> Alert | None:
         stmt = select(AlertModel).where(AlertModel.id == alert_id)
         result = await self.session.execute(stmt)
         alert_model = result.scalar_one_or_none()
@@ -49,7 +48,7 @@ class AlertRepository(IAlertRepository):
             return self._to_entity(alert_model)
         return None
 
-    async def get_by_user_id(self, user_id: str, include_deleted: bool = False) -> List[Alert]:
+    async def get_by_user_id(self, user_id: str, include_deleted: bool = False) -> list[Alert]:
         if include_deleted:
             stmt = select(AlertModel).where(AlertModel.user_id == user_id)
         else:
@@ -62,7 +61,7 @@ class AlertRepository(IAlertRepository):
 
         return [self._to_entity(model) for model in alert_models]
 
-    async def get_active_alerts(self) -> List[Alert]:
+    async def get_active_alerts(self) -> list[Alert]:
         stmt = select(AlertModel).where(
             and_(AlertModel.status == AlertStatus.ACTIVE.value, AlertModel.push_enabled is True)
         )
@@ -87,7 +86,7 @@ class AlertRepository(IAlertRepository):
         alert_model.push_enabled = alert.push_enabled
         alert_model.trigger_count = alert.trigger_count
         alert_model.last_triggered_at = alert.last_triggered_at
-        alert_model.updated_at = datetime.now(timezone.utc)
+        alert_model.updated_at = datetime.now(UTC)
 
         await self.session.flush()
         await self.session.refresh(alert_model)
@@ -105,7 +104,7 @@ class AlertRepository(IAlertRepository):
 
         if soft_delete:
             alert_model.status = AlertStatus.DELETED.value
-            alert_model.updated_at = datetime.now(timezone.utc)
+            alert_model.updated_at = datetime.now(UTC)
             logger.info(f"Soft deleted alert: {alert_model.name}")
         else:
             await self.session.delete(alert_model)
@@ -120,7 +119,7 @@ class AlertRepository(IAlertRepository):
 
         if alert_model:
             alert_model.trigger_count += 1
-            alert_model.last_triggered_at = datetime.now(timezone.utc)
+            alert_model.last_triggered_at = datetime.now(UTC)
 
     def _to_entity(self, model: AlertModel) -> Alert:
         conditions_list = []

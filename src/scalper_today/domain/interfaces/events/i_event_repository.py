@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import date, datetime
-from typing import List, Optional
 
-from scalper_today.domain.entities import EconomicEvent, DailyBriefing
+from scalper_today.domain.entities import DailyBriefing, EconomicEvent
 
 
 class IEventRepository(ABC):
@@ -15,31 +14,31 @@ class IEventRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_cache_last_update(self, target_date: date) -> Optional[datetime]:
+    async def get_cache_last_update(self, target_date: date) -> datetime | None:
         pass
 
     @abstractmethod
     async def get_range_cache_last_update(
         self, start_date: date, end_date: date
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         pass
 
     @abstractmethod
     async def get_events_by_date(
         self, target_date: date, only_missing_analysis: bool = False
-    ) -> List[EconomicEvent]:
+    ) -> list[EconomicEvent]:
         pass
 
     @abstractmethod
-    async def get_events_in_range(self, start_date: date, end_date: date) -> List[EconomicEvent]:
+    async def get_events_in_range(self, start_date: date, end_date: date) -> list[EconomicEvent]:
         pass
 
     @abstractmethod
-    async def save_events_batch(self, events: List[EconomicEvent], target_date: date) -> None:
+    async def save_events_batch(self, events: list[EconomicEvent], target_date: date) -> None:
         pass
 
     @abstractmethod
-    async def get_daily_briefing(self, target_date: date) -> Optional[DailyBriefing]:
+    async def get_daily_briefing(self, target_date: date) -> DailyBriefing | None:
         pass
 
     @abstractmethod

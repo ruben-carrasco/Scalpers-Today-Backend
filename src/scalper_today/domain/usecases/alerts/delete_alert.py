@@ -1,7 +1,7 @@
 import logging
 
+from scalper_today.domain.exceptions import PermissionDeniedError, ResourceNotFoundError
 from scalper_today.domain.interfaces import IAlertRepository
-from scalper_today.domain.exceptions import ResourceNotFoundError, PermissionDeniedError
 
 logger = logging.getLogger(__name__)
 

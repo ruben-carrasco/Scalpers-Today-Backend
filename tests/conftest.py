@@ -1,13 +1,15 @@
-import pytest
-from unittest.mock import AsyncMock
+import os
 
 # Add the src folder to Python path before importing application modules
 import sys
-import os
+from unittest.mock import AsyncMock
+
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from fastapi.testclient import TestClient
+
 from scalper_today.api.app import app
 from scalper_today.api.routes.events import _reset_refresh_rate_limit
 

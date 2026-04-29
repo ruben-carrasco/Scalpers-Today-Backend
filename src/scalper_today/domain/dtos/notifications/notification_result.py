@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
-from typing import List, Any, Optional
+from typing import Any
 
 
 @dataclass
 class NotificationResult:
     success_count: int
     failure_count: int
-    results: List[Any] = field(default_factory=list)
-    error: Optional[str] = None
+    results: list[Any] = field(default_factory=list)
+    error: str | None = None
 
     @property
     def is_success(self) -> bool:

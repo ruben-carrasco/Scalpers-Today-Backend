@@ -1,22 +1,23 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
-from typing import AsyncIterator, Optional, List
 
 import httpx
 import pytz
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from scalper_today.config import Settings, get_settings
+from scalper_today.domain.entities import DailyBriefing, EconomicEvent, HomeSummary
 from scalper_today.domain.interfaces import (
     IAIAnalyzer,
-    IAuthService,
-    IEventRepository,
-    IEventProvider,
-    IUserRepository,
     IAlertRepository,
+    IAuthService,
     IDeviceTokenRepository,
+    IEventProvider,
+    IEventRepository,
+    IUserRepository,
 )
-from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
 from scalper_today.domain.usecases import (
     BackfillEventAnalysisResult,
     BackfillEventAnalysisUseCase,
@@ -25,22 +26,21 @@ from scalper_today.domain.usecases import (
     GetMacroEventsUseCase,
     GetWeekEventsUseCase,
 )
-from scalper_today.config import Settings, get_settings
 from scalper_today.infrastructure import (
     FallbackCalendarProvider,
     ForexFactoryCalendarProvider,
     OpenRouterAnalyzer,
     RapidApiCalendarProvider,
 )
+from scalper_today.infrastructure.auth import JWTService
 from scalper_today.infrastructure.database import (
+    AlertRepository,
     DatabaseManager,
+    DeviceTokenRepository,
     EventRepository,
     UserRepository,
-    AlertRepository,
-    DeviceTokenRepository,
     get_db_url,
 )
-from scalper_today.infrastructure.auth import JWTService
 from scalper_today.infrastructure.notifications.expo import ExpoPushService
 from scalper_today.infrastructure.notifications.notification_scheduler import NotificationScheduler
 
@@ -65,8 +65,8 @@ class Container:
         provider: IEventProvider,
         analyzer: IAIAnalyzer,
         jwt_service: IAuthService,
-        expo_push_service: Optional[ExpoPushService] = None,
-        notification_scheduler: Optional[NotificationScheduler] = None,
+        expo_push_service: ExpoPushService | None = None,
+        notification_scheduler: NotificationScheduler | None = None,
     ):
         self.settings = settings
         self.http_client = http_client
@@ -80,10 +80,10 @@ class Container:
     def get_jwt_service(self) -> IAuthService:
         return self._jwt_service
 
-    def get_expo_push_service(self) -> Optional[ExpoPushService]:
+    def get_expo_push_service(self) -> ExpoPushService | None:
         return self._expo_push_service
 
-    def get_notification_scheduler(self) -> Optional[NotificationScheduler]:
+    def get_notification_scheduler(self) -> NotificationScheduler | None:
         return self._notification_scheduler
 
     def get_user_repository(self, session: AsyncSession) -> IUserRepository:
@@ -98,7 +98,7 @@ class Container:
     def get_device_token_repository(self, session: AsyncSession) -> IDeviceTokenRepository:
         return DeviceTokenRepository(session)
 
-    async def get_macro_events(self, force_refresh: bool = False) -> List[EconomicEvent]:
+    async def get_macro_events(self, force_refresh: bool = False) -> list[EconomicEvent]:
         madrid_date = datetime.now(TZ_MADRID).date()
         async with self.database_manager.session() as session:
             repository = self.get_event_repository(session)
@@ -110,9 +110,9 @@ class Container:
     async def get_week_events(
         self,
         force_refresh: bool = False,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-    ) -> List[EconomicEvent]:
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[EconomicEvent]:
         madrid_date = datetime.now(TZ_MADRID).date()
         week_start, week_end = (
             (start_date, end_date)
@@ -152,8 +152,8 @@ class Container:
 
     async def backfill_event_analysis(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         include_deep: bool = False,
     ) -> BackfillEventAnalysisResult:
         madrid_date = datetime.now(TZ_MADRID).date()

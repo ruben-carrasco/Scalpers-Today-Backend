@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any
 
 
 @dataclass
@@ -7,12 +7,12 @@ class ExpoPushMessage:
     to: str  # Expo push token (ExponentPushToken[xxx])
     title: str
     body: str
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
     sound: str = "default"
     priority: str = "high"
     badge: int = 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         message = {
             "to": self.to,
             "title": self.title,

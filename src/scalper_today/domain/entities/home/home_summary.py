@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List, Optional
 
 from ..events.economic_event import EconomicEvent
 
@@ -13,7 +12,7 @@ class HomeSummary:
     high_impact_count: int
     medium_impact_count: int
     low_impact_count: int
-    next_event: Optional[EconomicEvent]
+    next_event: EconomicEvent | None
     sentiment: str
     volatility_level: str
-    highlights: List[EconomicEvent]
+    highlights: list[EconomicEvent]

@@ -1,14 +1,14 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from scalper_today.domain.entities import Alert, AlertCondition, AlertType, AlertStatus
 from scalper_today.domain.dtos import UpdateAlertRequest
-from scalper_today.domain.interfaces import IAlertRepository
+from scalper_today.domain.entities import Alert, AlertCondition, AlertStatus, AlertType
 from scalper_today.domain.exceptions import (
-    ResourceNotFoundError,
     PermissionDeniedError,
+    ResourceNotFoundError,
     ValidationError,
 )
+from scalper_today.domain.interfaces import IAlertRepository
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class UpdateAlertUseCase:
         if request.push_enabled is not None:
             alert.push_enabled = request.push_enabled
 
-        alert.updated_at = datetime.now(timezone.utc)
+        alert.updated_at = datetime.now(UTC)
 
         updated_alert = await self.alert_repository.update(alert)
 

@@ -1,8 +1,7 @@
 import logging
-from typing import Optional
 
 from scalper_today.domain.entities import User
-from scalper_today.domain.interfaces import IUserRepository, IAuthService
+from scalper_today.domain.interfaces import IAuthService, IUserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +11,7 @@ class GetCurrentUserUseCase:
         self.user_repository = user_repository
         self.auth_service = auth_service
 
-    async def execute(self, token: str) -> Optional[User]:
+    async def execute(self, token: str) -> User | None:
         user_id = self.auth_service.get_user_id_from_token(token)
 
         if not user_id:

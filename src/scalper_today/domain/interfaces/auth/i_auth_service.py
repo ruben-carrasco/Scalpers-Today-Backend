@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
-from scalper_today.domain.entities import User, AuthToken
+from scalper_today.domain.entities import AuthToken, User
 
 
 class IAuthService(ABC):
@@ -18,5 +17,5 @@ class IAuthService(ABC):
         pass
 
     @abstractmethod
-    def get_user_id_from_token(self, token: str) -> Optional[str]:
+    def get_user_id_from_token(self, token: str) -> str | None:
         pass

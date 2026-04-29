@@ -1,10 +1,10 @@
+from collections.abc import Iterable
 from datetime import date, datetime, time
-from typing import Iterable, List
 
 from scalper_today.domain.entities import EconomicEvent
 
 
-def sort_events(events: Iterable[EconomicEvent]) -> List[EconomicEvent]:
+def sort_events(events: Iterable[EconomicEvent]) -> list[EconomicEvent]:
     return sorted(events, key=_event_sort_key)
 
 

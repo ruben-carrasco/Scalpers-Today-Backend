@@ -2,7 +2,7 @@ import logging
 import time
 from collections import defaultdict
 from datetime import date
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Security
 from fastapi.security import APIKeyHeader
@@ -12,24 +12,25 @@ from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.usecases import (
     EventFilter,
     EventFilterCriteria,
-    GetUpcomingEventsUseCase,
     GetAvailableCountriesUseCase,
+    GetUpcomingEventsUseCase,
 )
+
 from ..schemas import (
-    EventResponse,
-    WeekEventResponse,
-    HomeSummaryResponse,
-    DailyBriefingResponse,
-    FilteredEventsResponse,
-    ImportanceEventsResponse,
-    UpcomingEventsResponse,
     AvailableCountriesResponse,
     BackfillAnalysisResponse,
-    RefreshEventsResponse,
+    DailyBriefingResponse,
     ErrorResponse,
-    WelcomeSchema,
-    TodayStatsSchema,
+    EventResponse,
+    FilteredEventsResponse,
+    HomeSummaryResponse,
+    ImportanceEventsResponse,
     MarketSentimentSchema,
+    RefreshEventsResponse,
+    TodayStatsSchema,
+    UpcomingEventsResponse,
+    WeekEventResponse,
+    WelcomeSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,9 +78,9 @@ def _reset_refresh_rate_limit() -> None:
 
 
 def _resolve_event_range(
-    start_date: Optional[date],
-    end_date: Optional[date],
-) -> tuple[Optional[date], Optional[date]]:
+    start_date: date | None,
+    end_date: date | None,
+) -> tuple[date | None, date | None]:
     if start_date is None and end_date is None:
         return None, None
 
@@ -110,14 +111,14 @@ def _resolve_event_range(
         "Returns today's normalized economic events in Madrid time. The response is served from "
         "cache when valid and falls back to the configured provider when refresh is needed."
     ),
-    response_model=List[EventResponse],
+    response_model=list[EventResponse],
     responses={
         200: {"description": "Economic events retrieved successfully."},
         503: {"model": ErrorResponse, "description": "Events temporarily unavailable."},
         500: {"model": ErrorResponse, "description": "Internal server error fetching events."},
     },
 )
-async def get_macro_events(c: ContainerDep) -> List[EconomicEvent]:
+async def get_macro_events(c: ContainerDep) -> list[EconomicEvent]:
     events = await c.get_macro_events()
     if not events:
         raise HTTPException(status_code=503, detail="Economic events temporarily unavailable")
@@ -142,7 +143,7 @@ async def get_macro_events(c: ContainerDep) -> List[EconomicEvent]:
 async def refresh_macro_events(
     c: ContainerDep,
     req: Request,
-    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
+    api_key: Annotated[str | None, Security(api_key_header)] = None,
 ) -> RefreshEventsResponse:
     _check_refresh_rate_limit(req)
     expected_key = c.settings.refresh_api_key
@@ -219,16 +220,16 @@ async def get_home_summary(c: ContainerDep):
 async def get_filtered_events(
     c: ContainerDep,
     importance: Annotated[
-        Optional[int], Query(ge=1, le=3, description="Importance level: 1 low, 2 medium, 3 high.")
+        int | None, Query(ge=1, le=3, description="Importance level: 1 low, 2 medium, 3 high.")
     ] = None,
     country: Annotated[
-        Optional[str], Query(max_length=100, description="Country or currency code to match.")
+        str | None, Query(max_length=100, description="Country or currency code to match.")
     ] = None,
     has_data: Annotated[
-        Optional[bool], Query(description="When true, only events with released actual values.")
+        bool | None, Query(description="When true, only events with released actual values.")
     ] = None,
     search: Annotated[
-        Optional[str], Query(min_length=1, max_length=200, description="Text search over titles.")
+        str | None, Query(min_length=1, max_length=200, description="Text search over titles.")
     ] = None,
     offset: Annotated[int, Query(ge=0, description="Zero-based pagination offset.")] = 0,
     limit: Annotated[int, Query(ge=1, le=100, description="Maximum events to return.")] = 50,
@@ -252,7 +253,7 @@ async def get_filtered_events(
         "Returns events for the current week by default. Optionally accepts `startDate` and "
         "`endDate` in `YYYY-MM-DD` format. Custom ranges are limited to 31 days."
     ),
-    response_model=List[WeekEventResponse],
+    response_model=list[WeekEventResponse],
     responses={
         200: {"description": "Weekly events returned successfully."},
         422: {"model": ErrorResponse, "description": "Invalid or incomplete date range."},
@@ -261,12 +262,12 @@ async def get_filtered_events(
 async def get_week_events(
     c: ContainerDep,
     start_date: Annotated[
-        Optional[date], Query(alias="startDate", description="Inclusive range start date.")
+        date | None, Query(alias="startDate", description="Inclusive range start date.")
     ] = None,
     end_date: Annotated[
-        Optional[date], Query(alias="endDate", description="Inclusive range end date.")
+        date | None, Query(alias="endDate", description="Inclusive range end date.")
     ] = None,
-) -> List[WeekEventResponse]:
+) -> list[WeekEventResponse]:
     resolved_start, resolved_end = _resolve_event_range(start_date, end_date)
     events = await c.get_week_events(start_date=resolved_start, end_date=resolved_end)
     return [WeekEventResponse.from_domain(event) for event in events]
@@ -292,12 +293,12 @@ async def refresh_week_events(
     c: ContainerDep,
     req: Request,
     start_date: Annotated[
-        Optional[date], Query(alias="startDate", description="Inclusive range start date.")
+        date | None, Query(alias="startDate", description="Inclusive range start date.")
     ] = None,
     end_date: Annotated[
-        Optional[date], Query(alias="endDate", description="Inclusive range end date.")
+        date | None, Query(alias="endDate", description="Inclusive range end date.")
     ] = None,
-    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
+    api_key: Annotated[str | None, Security(api_key_header)] = None,
 ) -> RefreshEventsResponse:
     _check_refresh_rate_limit(req)
     expected_key = c.settings.refresh_api_key
@@ -341,10 +342,10 @@ async def backfill_event_analysis(
     c: ContainerDep,
     req: Request,
     start_date: Annotated[
-        Optional[date], Query(alias="startDate", description="Inclusive range start date.")
+        date | None, Query(alias="startDate", description="Inclusive range start date.")
     ] = None,
     end_date: Annotated[
-        Optional[date], Query(alias="endDate", description="Inclusive range end date.")
+        date | None, Query(alias="endDate", description="Inclusive range end date.")
     ] = None,
     include_deep: Annotated[
         bool,
@@ -353,7 +354,7 @@ async def backfill_event_analysis(
             description="When true, also generate missing deep analysis for high-impact events.",
         ),
     ] = False,
-    api_key: Annotated[Optional[str], Security(api_key_header)] = None,
+    api_key: Annotated[str | None, Security(api_key_header)] = None,
 ) -> BackfillAnalysisResponse:
     _check_refresh_rate_limit(req)
     expected_key = c.settings.refresh_api_key

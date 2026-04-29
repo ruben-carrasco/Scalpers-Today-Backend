@@ -1,9 +1,10 @@
-from typing import List, Optional
+
 from pydantic import BaseModel
+
 from ..events.event_response import EventResponse
-from .welcome_schema import WelcomeSchema
-from .today_stats_schema import TodayStatsSchema
 from .market_sentiment_schema import MarketSentimentSchema
+from .today_stats_schema import TodayStatsSchema
+from .welcome_schema import WelcomeSchema
 
 
 class HomeSummaryResponse(BaseModel):
@@ -37,6 +38,6 @@ class HomeSummaryResponse(BaseModel):
 
     welcome: WelcomeSchema
     today_stats: TodayStatsSchema
-    next_event: Optional[EventResponse]
+    next_event: EventResponse | None
     market_sentiment: MarketSentimentSchema
-    highlights: List[EventResponse]
+    highlights: list[EventResponse]

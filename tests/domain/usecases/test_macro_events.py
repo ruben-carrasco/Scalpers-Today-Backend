@@ -1,11 +1,10 @@
 from datetime import datetime
-
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
+from scalper_today.domain.entities import AIAnalysis, EconomicEvent, Importance
 from scalper_today.domain.usecases import GetMacroEventsUseCase
-from scalper_today.domain.entities import AIAnalysis, EconomicEvent
-from scalper_today.domain.entities import Importance
 from scalper_today.domain.usecases.events.cache_key_generator import CacheKeyGenerator
 
 

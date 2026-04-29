@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List, Optional
 
 import pytz
 
-from scalper_today.domain.entities import EconomicEvent, DailyBriefing, HomeSummary
+from scalper_today.domain.entities import DailyBriefing, EconomicEvent, HomeSummary
 from scalper_today.domain.usecases.events.event_ordering import sort_events
 
 TZ_MADRID = pytz.timezone("Europe/Madrid")
@@ -25,7 +24,7 @@ class GetHomeSummaryUseCase:
             return "Buenas noches"
 
     @staticmethod
-    def count_by_importance(events: List[EconomicEvent]) -> tuple:
+    def count_by_importance(events: list[EconomicEvent]) -> tuple:
         high = medium = low = 0
         for event in events:
             importance = int(event.importance)
@@ -39,15 +38,15 @@ class GetHomeSummaryUseCase:
 
     @staticmethod
     def find_next_upcoming(
-        events: List[EconomicEvent], current_time_str: str
-    ) -> Optional[EconomicEvent]:
+        events: list[EconomicEvent], current_time_str: str
+    ) -> EconomicEvent | None:
         return next((e for e in events if e.time >= current_time_str), None)
 
     @staticmethod
     def generate_highlights(
-        events: List[EconomicEvent],
-        current_time_str: Optional[str] = None,
-    ) -> List[EconomicEvent]:
+        events: list[EconomicEvent],
+        current_time_str: str | None = None,
+    ) -> list[EconomicEvent]:
         if current_time_str:
             events = [e for e in events if e.time >= current_time_str]
 
@@ -62,9 +61,9 @@ class GetHomeSummaryUseCase:
 
     def execute(
         self,
-        events: List[EconomicEvent],
+        events: list[EconomicEvent],
         briefing: DailyBriefing,
-        now: Optional[datetime] = None,
+        now: datetime | None = None,
     ) -> HomeSummary:
         current_time = now or datetime.now(TZ_MADRID)
         current_time_str = current_time.strftime("%H:%M")

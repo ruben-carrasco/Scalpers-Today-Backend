@@ -1,11 +1,11 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from scalper_today.domain.entities import Alert, AlertCondition, AlertType, AlertStatus
 from scalper_today.domain.dtos import CreateAlertRequest
-from scalper_today.domain.interfaces import IAlertRepository
+from scalper_today.domain.entities import Alert, AlertCondition, AlertStatus, AlertType
 from scalper_today.domain.exceptions import ValidationError
+from scalper_today.domain.interfaces import IAlertRepository
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +56,8 @@ class CreateAlertUseCase:
             conditions=conditions,
             status=AlertStatus.ACTIVE,
             push_enabled=request.push_enabled,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             trigger_count=0,
         )
 

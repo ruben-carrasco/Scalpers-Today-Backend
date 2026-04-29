@@ -1,4 +1,5 @@
 import re
+
 from scalper_today.domain.dtos import PasswordRequirements, PasswordValidationResult
 
 

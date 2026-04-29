@@ -1,5 +1,6 @@
-from typing import List
+
 from pydantic import BaseModel
+
 from .event_response import EventResponse
 
 
@@ -8,4 +9,4 @@ class ImportanceEventsResponse(BaseModel):
 
     importance: int
     count: int
-    events: List[EventResponse]
+    events: list[EventResponse]

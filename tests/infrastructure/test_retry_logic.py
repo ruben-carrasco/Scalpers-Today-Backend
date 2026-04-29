@@ -61,9 +61,8 @@ class TestAnalyzerRetry:
         with patch(
             "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
             new_callable=AsyncMock,
-        ):
-            with pytest.raises(ExternalServiceError):
-                await analyzer._call_api("test prompt")
+        ), pytest.raises(ExternalServiceError):
+            await analyzer._call_api("test prompt")
 
         assert client.post.call_count == 2
 
@@ -76,9 +75,8 @@ class TestAnalyzerRetry:
         with patch(
             "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
             new_callable=AsyncMock,
-        ):
-            with pytest.raises(ExternalServiceError):
-                await analyzer._call_api("test prompt")
+        ), pytest.raises(ExternalServiceError):
+            await analyzer._call_api("test prompt")
 
         assert client.post.call_count == 1
 
@@ -111,9 +109,8 @@ class TestAnalyzerRetry:
         with patch(
             "scalper_today.infrastructure.ai.openrouter_analyzer.asyncio.sleep",
             new_callable=AsyncMock,
-        ):
-            with pytest.raises(ExternalServiceError):
-                await analyzer._call_api("test prompt")
+        ), pytest.raises(ExternalServiceError):
+            await analyzer._call_api("test prompt")
 
         assert client.post.call_count == 1
 

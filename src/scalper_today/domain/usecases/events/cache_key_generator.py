@@ -1,6 +1,5 @@
 import hashlib
 from datetime import datetime
-from typing import List
 
 from scalper_today.domain.entities import EconomicEvent
 
@@ -11,7 +10,7 @@ class CacheKeyGenerator:
         return hashlib.md5(event.cache_signature.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def for_daily_briefing(events: List[EconomicEvent], date: datetime) -> str:
+    def for_daily_briefing(events: list[EconomicEvent], date: datetime) -> str:
         date_str = date.strftime("%Y-%m-%d")
 
         if not events:
