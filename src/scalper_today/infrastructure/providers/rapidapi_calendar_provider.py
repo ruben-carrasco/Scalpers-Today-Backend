@@ -2,6 +2,7 @@ import logging
 import re
 from datetime import date, datetime
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 import pytz
@@ -35,10 +36,11 @@ class RapidApiCalendarProvider(IEventProvider):
         if not self._settings.rapidapi_calendar_key:
             logger.warning("RapidAPI calendar key is not configured")
             return None
+        calendar_url = self._calendar_url()
 
         try:
             response = await self._client.get(
-                self._settings.rapidapi_calendar_url,
+                calendar_url,
                 headers={
                     "X-RapidAPI-Key": self._settings.rapidapi_calendar_key,
                     "X-RapidAPI-Host": self._settings.rapidapi_calendar_host,
@@ -138,9 +140,29 @@ class RapidApiCalendarProvider(IEventProvider):
             forecast=forecast,
             previous=previous,
             surprise=surprise,
-            url=self._settings.rapidapi_calendar_url,
+            url=self._calendar_url(),
             _timestamp=event_dt,
         )
+
+    def _calendar_url(self) -> str:
+        raw = self._safe_text(self._settings.rapidapi_calendar_url)
+        if not raw:
+            return "https://economic-calendar-api.p.rapidapi.com/calendar"
+
+        normalized = raw.rstrip("/")
+        try:
+            parsed = urlsplit(normalized)
+            path = parsed.path.rstrip("/")
+            marker = "/calendar/"
+            marker_index = path.find(marker)
+            if marker_index != -1:
+                path = path[: marker_index + len("/calendar")]
+            if not path:
+                path = "/calendar"
+
+            return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
+        except Exception:
+            return normalized
 
     def _extract_datetime(self, row: dict[str, Any]) -> datetime | None:
         raw_value = self._first_value(row, "dateUtc", "date", "datetime", "timestamp", "time")
