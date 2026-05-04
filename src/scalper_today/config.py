@@ -1,7 +1,8 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,6 +33,28 @@ class Settings(BaseSettings):
     rapidapi_calendar_url: str = "https://economic-calendar-api.p.rapidapi.com/calendar"
     rapidapi_calendar_timezone: str = "GMT+0"
     rapidapi_calendar_limit: int = 500
+
+    @field_validator("rapidapi_calendar_url", mode="before")
+    @classmethod
+    def normalize_rapidapi_calendar_url(cls, value: str) -> str:
+        raw = str(value or "").strip()
+        if not raw:
+            return "https://economic-calendar-api.p.rapidapi.com/calendar"
+
+        normalized = raw.rstrip("/")
+        try:
+            parsed = urlsplit(normalized)
+            path = parsed.path.rstrip("/")
+            marker = "/calendar/"
+            marker_index = path.find(marker)
+            if marker_index != -1:
+                path = path[: marker_index + len("/calendar")]
+            if not path:
+                path = "/calendar"
+
+            return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
+        except Exception:
+            return normalized
 
     database_path: str = Field(
         default="data/scalper_today.db", description="Path to SQLite database"
