@@ -13,3 +13,6 @@ class AIAnalysisResponse(BaseModel):
     impacted_assets: str | list[str] | None = Field(
         None, description="Assets likely to be impacted"
     )
+    is_deep_analysis: bool = Field(
+        False, description="Whether this analysis includes the deep high-impact sections"
+    )

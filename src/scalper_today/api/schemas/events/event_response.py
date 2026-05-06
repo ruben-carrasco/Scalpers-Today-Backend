@@ -22,6 +22,7 @@ class EventResponse(BaseModel):
                     "summary": "Strong job growth exceeds expectations, potentially delaying rate cuts.",
                     "impact": "HIGH",
                     "sentiment": "BULLISH",
+                    "is_deep_analysis": True,
                 },
             }
         },

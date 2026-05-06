@@ -36,7 +36,7 @@ class GetMacroEventsUseCase:
                     logger.info(
                         f"Cache valid, completing missing analysis for {len(cached_events)} events"
                     )
-                    return await self._complete_missing_analysis(cached_events, include_deep=False)
+                    return await self._complete_missing_analysis(cached_events)
 
             cached_events = await self._repository.get_events_by_date(self._target_date)
             if cached_events:
@@ -50,7 +50,7 @@ class GetMacroEventsUseCase:
         if not scraped_events:
             logger.warning("No events fetched from provider")
             cached_events = await self._repository.get_events_by_date(self._target_date)
-            return await self._complete_missing_analysis(cached_events, include_deep=False)
+            return await self._complete_missing_analysis(cached_events)
 
         logger.info(f"Scraped {len(scraped_events)} events")
 
