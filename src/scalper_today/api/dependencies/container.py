@@ -127,7 +127,27 @@ class Container:
                 start_date=week_start,
                 end_date=week_end,
             )
-            return await use_case.execute(force_refresh=force_refresh)
+            events = await use_case.execute(force_refresh=force_refresh)
+
+            if week_start <= madrid_date <= week_end:
+                backfill = BackfillEventAnalysisUseCase(
+                    repository=repository,
+                    analyzer=self.analyzer,
+                    start_date=madrid_date,
+                    end_date=madrid_date,
+                )
+                result = await backfill.execute(include_deep=True)
+                if result.quick_saved or result.deep_saved:
+                    logger.info(
+                        "Completed missing analysis for today's week events",
+                        extra={
+                            "quick_saved": result.quick_saved,
+                            "deep_saved": result.deep_saved,
+                        },
+                    )
+                    events = await repository.get_events_in_range(week_start, week_end)
+
+            return events
 
     async def get_daily_briefing(self) -> DailyBriefing:
         madrid_date = datetime.now(TZ_MADRID).date()

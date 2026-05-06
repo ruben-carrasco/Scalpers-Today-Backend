@@ -81,7 +81,7 @@ async def test_macro_events_cache_hit_completes_missing_ai_without_provider(
     mock_repo.save_events_batch.assert_awaited()
 
 
-async def test_macro_events_cache_hit_skips_deep_ai_completion(
+async def test_macro_events_cache_hit_completes_deep_ai_for_high_impact(
     mock_repo, mock_scraper, mock_analyzer
 ):
     mock_repo.is_cache_valid.return_value = True
@@ -94,15 +94,25 @@ async def test_macro_events_cache_hit_skips_deep_ai_completion(
         importance=Importance.HIGH,
         ai_analysis=AIAnalysis(summary="Quick analysis", impact="High"),
     )
+    deep_analysis = AIAnalysis(
+        summary="Deep analysis",
+        impact="High",
+        macro_context="Macro context",
+        is_deep_analysis=True,
+    )
     mock_repo.get_events_by_date.return_value = [cached_event]
+    mock_analyzer.analyze_events_deep.return_value = {
+        CacheKeyGenerator.for_event(cached_event): deep_analysis
+    }
 
     usecase = GetMacroEventsUseCase(mock_scraper, mock_repo, mock_analyzer)
     events = await usecase.execute(force_refresh=False)
 
-    assert events == [cached_event]
+    assert events[0].ai_analysis == deep_analysis
     mock_scraper.fetch_today_events.assert_not_called()
     mock_analyzer.analyze_events.assert_not_awaited()
-    mock_analyzer.analyze_events_deep.assert_not_awaited()
+    mock_analyzer.analyze_events_deep.assert_awaited_once_with([cached_event])
+    mock_repo.save_events_batch.assert_awaited()
 
 
 async def test_macro_events_cache_hit_returns_events_ordered(

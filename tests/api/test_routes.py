@@ -107,6 +107,7 @@ def test_week_event_response_accepts_impacted_assets_list():
             impact="HIGH",
             sentiment="BULLISH",
             impacted_assets=["NZD/USD"],
+            is_deep_analysis=True,
         ),
         _timestamp=datetime(2026, 4, 26, 10, 0),
     )
@@ -115,6 +116,7 @@ def test_week_event_response_accepts_impacted_assets_list():
 
     assert response.ai_analysis is not None
     assert response.ai_analysis.impacted_assets == ["NZD/USD"]
+    assert response.ai_analysis.is_deep_analysis is True
     assert response.event_date == "2026-04-26"
 
 
