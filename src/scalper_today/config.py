@@ -80,6 +80,16 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_token_expire_days: int = 7
     password_reset_token_expire_minutes: int = 30
+    password_reset_url_template: str = "scalpertoday://forgot-password?token={token}"
+
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "Scalpers Today"
+    smtp_use_tls: bool = True
+    smtp_use_ssl: bool = False
 
     cors_origins: str = Field(
         default="http://localhost:3000,http://localhost:8080",
@@ -89,6 +99,10 @@ class Settings(BaseSettings):
     @property
     def is_auth_configured(self) -> bool:
         return bool(self.jwt_secret_key and self.jwt_secret_key != "")
+
+    @property
+    def is_smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from_email)
 
     @property
     def cors_origins_list(self) -> list:

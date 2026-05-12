@@ -218,7 +218,8 @@ async def request_password_reset(
     async with container.database_manager.session() as session:
         user_repo = container.get_user_repository(session)
         auth_service = container.get_jwt_service()
-        use_case = RequestPasswordResetUseCase(user_repo, auth_service)
+        password_reset_notifier = container.get_password_reset_notifier()
+        use_case = RequestPasswordResetUseCase(user_repo, auth_service, password_reset_notifier)
 
         result = await use_case.execute(PasswordResetReq(email=request.email))
         reset_token = result.reset_token if container.settings.app_env != "production" else None
