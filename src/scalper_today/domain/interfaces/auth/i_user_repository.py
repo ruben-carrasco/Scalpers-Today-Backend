@@ -21,6 +21,10 @@ class IUserRepository(ABC):
         pass
 
     @abstractmethod
+    async def update_password(self, user_id: str, hashed_password: str) -> User:
+        pass
+
+    @abstractmethod
     async def create_from_oauth(self, email: str, name: str, provider: str) -> User:
         pass
 

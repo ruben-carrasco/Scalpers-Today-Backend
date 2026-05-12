@@ -260,6 +260,7 @@ async def init_container() -> AsyncIterator[Container]:
         secret_key=jwt_secret,
         algorithm=settings.jwt_algorithm,
         token_expire_days=settings.jwt_token_expire_days,
+        password_reset_expire_minutes=settings.password_reset_token_expire_minutes,
     )
 
     expo_push_service = ExpoPushService(http_client)

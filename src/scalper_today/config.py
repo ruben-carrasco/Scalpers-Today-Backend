@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(default="", description="JWT secret key for signing tokens")
     jwt_algorithm: str = "HS256"
     jwt_token_expire_days: int = 7
+    password_reset_token_expire_minutes: int = 30
 
     cors_origins: str = Field(
         default="http://localhost:3000,http://localhost:8080",

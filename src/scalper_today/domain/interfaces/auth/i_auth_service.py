@@ -19,3 +19,11 @@ class IAuthService(ABC):
     @abstractmethod
     def get_user_id_from_token(self, token: str) -> str | None:
         pass
+
+    @abstractmethod
+    def create_password_reset_token(self, user: User) -> str:
+        pass
+
+    @abstractmethod
+    def get_user_id_from_password_reset_token(self, token: str) -> str | None:
+        pass

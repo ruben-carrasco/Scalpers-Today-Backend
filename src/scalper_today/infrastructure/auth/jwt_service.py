@@ -13,10 +13,17 @@ logger = logging.getLogger(__name__)
 
 
 class JWTService(IAuthService):
-    def __init__(self, secret_key: str, algorithm: str = "HS256", token_expire_days: int = 30):
+    def __init__(
+        self,
+        secret_key: str,
+        algorithm: str = "HS256",
+        token_expire_days: int = 30,
+        password_reset_expire_minutes: int = 30,
+    ):
         self.secret_key = secret_key
         self.algorithm = algorithm
         self.token_expire_days = token_expire_days
+        self.password_reset_expire_minutes = password_reset_expire_minutes
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     async def hash_password(self, password: str) -> str:
@@ -64,3 +71,23 @@ class JWTService(IAuthService):
         if payload:
             return payload.get("sub")
         return None
+
+    def create_password_reset_token(self, user: User) -> str:
+        expire = datetime.now(UTC) + timedelta(minutes=self.password_reset_expire_minutes)
+        payload = {
+            "sub": user.id,
+            "email": user.email,
+            "purpose": "password_reset",
+            "exp": expire,
+            "iat": datetime.now(UTC),
+            "jti": str(uuid.uuid4()),
+        }
+
+        logger.info(f"Created password reset token for user: {user.email}")
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+
+    def get_user_id_from_password_reset_token(self, token: str) -> str | None:
+        payload = self.verify_token(token)
+        if not payload or payload.get("purpose") != "password_reset":
+            return None
+        return payload.get("sub")

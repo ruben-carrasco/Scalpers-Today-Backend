@@ -6,6 +6,9 @@ from scalper_today.domain.dtos import (
     LoginUserRequest,
     LoginUserResponse,
     PasswordRequirements,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    PasswordResetRequestResult,
     PasswordValidationResult,
     RegisterDeviceTokenRequest,
     RegisterUserRequest,
@@ -22,10 +25,12 @@ from .alerts import (
     UpdateAlertUseCase,
 )
 from .auth import (
+    ConfirmPasswordResetUseCase,
     GetCurrentUserUseCase,
     LoginUserUseCase,
     PasswordValidator,
     RegisterUserUseCase,
+    RequestPasswordResetUseCase,
 )
 from .briefing import GetDailyBriefingUseCase
 from .events import (
@@ -48,6 +53,9 @@ __all__ = [
     "EventFilterCriteria",
     "PasswordValidator",
     "PasswordRequirements",
+    "PasswordResetConfirmRequest",
+    "PasswordResetRequest",
+    "PasswordResetRequestResult",
     "PasswordValidationResult",
     "GetMacroEventsUseCase",
     "GetWeekEventsUseCase",
@@ -61,6 +69,8 @@ __all__ = [
     "LoginUserUseCase",
     "LoginUserRequest",
     "LoginUserResponse",
+    "ConfirmPasswordResetUseCase",
+    "RequestPasswordResetUseCase",
     "RegisterUserUseCase",
     "RegisterUserRequest",
     "RegisterUserResponse",
