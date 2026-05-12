@@ -39,26 +39,60 @@ class EmailPasswordResetNotifier(IPasswordResetNotifier):
         message.set_content(
             "\n".join(
                 [
-                    "Has solicitado restablecer tu contraseña de Scalpers Today.",
+                    "Scalpers Today",
+                    "Restablecimiento de contraseña",
                     "",
-                    "Abre este enlace para crear una nueva contraseña:",
+                    "Hemos recibido una solicitud para restablecer tu contraseña.",
+                    "Abre este enlace desde tu móvil para crear una nueva contraseña:",
                     reset_url,
                     "",
+                    "Si el enlace no se abre automáticamente, copia este código en la app:",
+                    token,
+                    "",
                     "Si no has solicitado este cambio, puedes ignorar este correo.",
-                    "Este enlace caduca por seguridad.",
+                    f"El enlace caduca en {self.settings.password_reset_token_expire_minutes} minutos.",
                 ]
             )
         )
         message.add_alternative(
             f"""
             <html>
-              <body>
-                <p>Has solicitado restablecer tu contraseña de <strong>Scalpers Today</strong>.</p>
-                <p>
-                  <a href="{reset_url}">Restablecer contraseña</a>
-                </p>
-                <p>Si no has solicitado este cambio, puedes ignorar este correo.</p>
-                <p>Este enlace caduca por seguridad.</p>
+              <body style="margin:0;padding:0;background:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:32px 16px;">
+                  <tr>
+                    <td align="center">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb;">
+                        <tr>
+                          <td style="background:#07111f;padding:28px 32px;">
+                            <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#22c7ee;font-weight:700;">Scalpers Today</div>
+                            <h1 style="margin:10px 0 0;color:#ffffff;font-size:26px;line-height:1.2;">Restablece tu contraseña</h1>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:30px 32px;">
+                            <p style="margin:0 0 18px;font-size:16px;line-height:1.55;color:#374151;">
+                              Hemos recibido una solicitud para restablecer tu contraseña. Pulsa el botón desde tu móvil para crear una nueva.
+                            </p>
+                            <p style="margin:26px 0;text-align:center;">
+                              <a href="{reset_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;padding:15px 24px;border-radius:999px;">
+                                Restablecer contraseña
+                              </a>
+                            </p>
+                            <p style="margin:0 0 10px;font-size:14px;line-height:1.5;color:#6b7280;">
+                              Si el enlace no se abre automáticamente, copia este código en la app:
+                            </p>
+                            <div style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;line-height:1.45;color:#111827;word-break:break-all;">
+                              {token}
+                            </div>
+                            <p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#6b7280;">
+                              Este enlace caduca en {self.settings.password_reset_token_expire_minutes} minutos. Si no has solicitado este cambio, puedes ignorar este correo.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
               </body>
             </html>
             """,
