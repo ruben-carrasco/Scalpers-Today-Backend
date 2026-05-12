@@ -42,6 +42,9 @@ from scalper_today.infrastructure.database import (
     get_db_url,
 )
 from scalper_today.infrastructure.notifications.expo import ExpoPushService
+from scalper_today.infrastructure.notifications.email_password_reset_notifier import (
+    EmailPasswordResetNotifier,
+)
 from scalper_today.infrastructure.notifications.notification_scheduler import NotificationScheduler
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,7 @@ class Container:
         provider: IEventProvider,
         analyzer: IAIAnalyzer,
         jwt_service: IAuthService,
+        password_reset_notifier: EmailPasswordResetNotifier,
         expo_push_service: ExpoPushService | None = None,
         notification_scheduler: NotificationScheduler | None = None,
     ):
@@ -74,11 +78,15 @@ class Container:
         self.provider: IEventProvider = provider
         self.analyzer: IAIAnalyzer = analyzer
         self._jwt_service: IAuthService = jwt_service
+        self._password_reset_notifier = password_reset_notifier
         self._expo_push_service = expo_push_service
         self._notification_scheduler = notification_scheduler
 
     def get_jwt_service(self) -> IAuthService:
         return self._jwt_service
+
+    def get_password_reset_notifier(self) -> EmailPasswordResetNotifier:
+        return self._password_reset_notifier
 
     def get_expo_push_service(self) -> ExpoPushService | None:
         return self._expo_push_service
@@ -260,7 +268,9 @@ async def init_container() -> AsyncIterator[Container]:
         secret_key=jwt_secret,
         algorithm=settings.jwt_algorithm,
         token_expire_days=settings.jwt_token_expire_days,
+        password_reset_expire_minutes=settings.password_reset_token_expire_minutes,
     )
+    password_reset_notifier = EmailPasswordResetNotifier(settings)
 
     expo_push_service = ExpoPushService(http_client)
     notification_scheduler = NotificationScheduler(
@@ -277,6 +287,7 @@ async def init_container() -> AsyncIterator[Container]:
         provider=provider,
         analyzer=analyzer,
         jwt_service=jwt_service,
+        password_reset_notifier=password_reset_notifier,
         expo_push_service=expo_push_service,
         notification_scheduler=notification_scheduler,
     )

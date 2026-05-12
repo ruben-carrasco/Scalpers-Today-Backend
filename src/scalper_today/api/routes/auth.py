@@ -9,11 +9,19 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from scalper_today.api.dependencies import Container, get_container
 from scalper_today.domain.dtos.google_login import GoogleLoginRequest
 from scalper_today.domain.usecases import (
+    ConfirmPasswordResetUseCase,
     GetCurrentUserUseCase,
     LoginUserUseCase,
     RegisterUserUseCase,
+    RequestPasswordResetUseCase,
 )
 from scalper_today.domain.usecases.auth.google_login import GoogleLoginUseCase
+from scalper_today.domain.usecases import (
+    PasswordResetConfirmRequest as PasswordResetConfirmReq,
+)
+from scalper_today.domain.usecases import (
+    PasswordResetRequest as PasswordResetReq,
+)
 from scalper_today.domain.usecases import (
     LoginUserRequest as LoginUserReq,
 )
@@ -25,6 +33,9 @@ from ..schemas import (
     AuthResponse,
     ErrorResponse,
     LoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    PasswordResetResponse,
     RegisterRequest,
     TokenResponse,
     UserPreferencesResponse,
@@ -181,6 +192,70 @@ async def login(request: LoginRequest, container: ContainerDep, req: Request):
         return AuthResponse(
             user=_map_user_to_response(result.user), token=_map_token_to_response(result.token)
         )
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Password reset request accepted"},
+        429: {"model": ErrorResponse, "description": "Too many requests"},
+    },
+    summary="Request password reset",
+    description=(
+        "Generate password reset instructions for an account. The response is generic to avoid "
+        "revealing whether the email exists. Development and test environments include the reset "
+        "token in the response so the mobile app can complete the flow without an email provider."
+    ),
+)
+async def request_password_reset(
+    request: PasswordResetRequest,
+    container: ContainerDep,
+    req: Request,
+):
+    _check_rate_limit(req, request.email)
+    async with container.database_manager.session() as session:
+        user_repo = container.get_user_repository(session)
+        auth_service = container.get_jwt_service()
+        password_reset_notifier = container.get_password_reset_notifier()
+        use_case = RequestPasswordResetUseCase(user_repo, auth_service, password_reset_notifier)
+
+        result = await use_case.execute(PasswordResetReq(email=request.email))
+        reset_token = result.reset_token if container.settings.app_env != "production" else None
+
+        return PasswordResetResponse(message=result.message, reset_token=reset_token)
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Password reset completed"},
+        400: {"model": ErrorResponse, "description": "Weak password"},
+        401: {"model": ErrorResponse, "description": "Invalid or expired reset token"},
+        429: {"model": ErrorResponse, "description": "Too many requests"},
+    },
+    summary="Confirm password reset",
+    description="Validate a password reset token and replace the account password.",
+)
+async def confirm_password_reset(
+    request: PasswordResetConfirmRequest,
+    container: ContainerDep,
+    req: Request,
+):
+    _check_rate_limit(req, "password-reset-confirm")
+    async with container.database_manager.session() as session:
+        user_repo = container.get_user_repository(session)
+        auth_service = container.get_jwt_service()
+        use_case = ConfirmPasswordResetUseCase(user_repo, auth_service)
+
+        await use_case.execute(
+            PasswordResetConfirmReq(token=request.token, new_password=request.new_password)
+        )
+
+        return PasswordResetResponse(message="Password updated successfully.")
 
 
 @router.post(

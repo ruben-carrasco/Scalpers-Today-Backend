@@ -163,6 +163,13 @@ Archivo base: [.env.example](/Users/rubencarrascofrias/Documents/TFG/proyecto/.e
 - `NOTIFICATION_CHECK_INTERVAL`
 - `NOTIFICATION_BEFORE_MINUTES`
 - `JWT_TOKEN_EXPIRE_DAYS`
+- `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`
+- `PASSWORD_RESET_URL_TEMPLATE`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`
+
+El restablecimiento de contraseña usa SMTP si está configurado. En desarrollo y test el endpoint
+devuelve también el token para poder probar el flujo sin proveedor de correo; en producción el
+token no se expone en la respuesta y debe llegar por email.
 
 ## Ejecución local
 

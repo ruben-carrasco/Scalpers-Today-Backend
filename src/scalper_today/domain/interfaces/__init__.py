@@ -1,5 +1,5 @@
 from .alerts import IAlertRepository, IDeviceTokenRepository
-from .auth import IAuthService, IUserRepository
+from .auth import IAuthService, IPasswordResetNotifier, IUserRepository
 from .events import IAIAnalyzer, IEventProvider, IEventRepository
 
 __all__ = [
@@ -9,5 +9,6 @@ __all__ = [
     "IDeviceTokenRepository",
     "IAIAnalyzer",
     "IAuthService",
+    "IPasswordResetNotifier",
     "IEventProvider",
 ]

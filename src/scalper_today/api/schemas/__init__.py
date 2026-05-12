@@ -9,6 +9,9 @@ from .alerts import (
 from .auth import (
     AuthResponse,
     LoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    PasswordResetResponse,
     RegisterRequest,
     TokenResponse,
     UserPreferencesResponse,
@@ -46,6 +49,9 @@ from .shared import (
 __all__ = [
     "RegisterRequest",
     "LoginRequest",
+    "PasswordResetConfirmRequest",
+    "PasswordResetRequest",
+    "PasswordResetResponse",
     "TokenResponse",
     "UserPreferencesResponse",
     "UserResponse",
