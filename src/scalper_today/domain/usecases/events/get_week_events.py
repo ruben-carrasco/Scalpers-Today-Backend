@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from scalper_today.domain.entities import EconomicEvent
 from scalper_today.domain.interfaces import IEventProvider, IEventRepository
@@ -64,10 +64,21 @@ class GetWeekEventsUseCase:
         if self._start_date == self._end_date:
             return True
 
+        expected_dates = self._expected_business_dates()
+        if not expected_dates:
+            return True
+
         cached_dates = {
             event._timestamp.date()
             for event in events
             if event._timestamp is not None
             and self._start_date <= event._timestamp.date() <= self._end_date
         }
-        return len(cached_dates) > 1
+        return expected_dates.issubset(cached_dates)
+
+    def _expected_business_dates(self) -> set[date]:
+        return {
+            self._start_date + timedelta(days=offset)
+            for offset in range((self._end_date - self._start_date).days + 1)
+            if (self._start_date + timedelta(days=offset)).weekday() < 5
+        }
