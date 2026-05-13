@@ -39,13 +39,54 @@ async def test_week_events_cache_hit(mock_repo, mock_provider):
         mock_provider,
         mock_repo,
         start_date=date(2026, 4, 13),
-        end_date=date(2026, 4, 19),
+        end_date=date(2026, 4, 13),
     )
 
     events = await use_case.execute()
 
     assert events == [cached_event]
     mock_provider.fetch_events_in_range.assert_not_called()
+
+
+async def test_week_events_refreshes_partial_multiday_cache(mock_repo, mock_provider):
+    cached_today_event = EconomicEvent(
+        id="today",
+        time="10:00",
+        title="Today",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=datetime(2026, 4, 13, 10, 0),
+    )
+    future_event = EconomicEvent(
+        id="future",
+        time="14:00",
+        title="Future",
+        country="EU",
+        currency="EUR",
+        importance=Importance.MEDIUM,
+        _timestamp=datetime(2026, 4, 15, 14, 0),
+    )
+    mock_repo.is_range_cache_valid.return_value = True
+    mock_repo.get_events_in_range.side_effect = [
+        [cached_today_event],
+        [cached_today_event, future_event],
+    ]
+    mock_provider.fetch_events_in_range.return_value = [cached_today_event, future_event]
+
+    use_case = GetWeekEventsUseCase(
+        mock_provider,
+        mock_repo,
+        start_date=date(2026, 4, 13),
+        end_date=date(2026, 4, 19),
+    )
+
+    events = await use_case.execute()
+
+    assert events == [cached_today_event, future_event]
+    mock_provider.fetch_events_in_range.assert_awaited_once_with(
+        date(2026, 4, 13), date(2026, 4, 19)
+    )
 
 
 async def test_week_events_cache_hit_returns_events_ordered(mock_repo, mock_provider):

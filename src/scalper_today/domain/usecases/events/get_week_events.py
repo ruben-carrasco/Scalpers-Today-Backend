@@ -34,7 +34,7 @@ class GetWeekEventsUseCase:
             range_cache_valid = await self._repository.is_range_cache_valid(
                 self._start_date, self._end_date
             )
-            if range_cache_valid:
+            if range_cache_valid and self._has_usable_cached_range(cached_events):
                 logger.info("Returning cached week events", extra={"count": len(cached_events)})
                 return sort_events(cached_events)
 
@@ -59,3 +59,15 @@ class GetWeekEventsUseCase:
         )
         logger.info("Returning refreshed week events", extra={"count": len(refreshed_events)})
         return sort_events(refreshed_events)
+
+    def _has_usable_cached_range(self, events: list[EconomicEvent]) -> bool:
+        if self._start_date == self._end_date:
+            return True
+
+        cached_dates = {
+            event._timestamp.date()
+            for event in events
+            if event._timestamp is not None
+            and self._start_date <= event._timestamp.date() <= self._end_date
+        }
+        return len(cached_dates) > 1
