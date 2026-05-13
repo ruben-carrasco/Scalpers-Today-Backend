@@ -89,7 +89,16 @@ async def test_week_events_refreshes_partial_multiday_cache(mock_repo, mock_prov
     )
 
 
-async def test_week_events_cache_hit_returns_events_ordered(mock_repo, mock_provider):
+async def test_week_events_refreshes_when_business_days_are_missing(mock_repo, mock_provider):
+    monday_event = EconomicEvent(
+        id="monday",
+        time="14:00",
+        title="Monday",
+        country="US",
+        currency="USD",
+        importance=Importance.HIGH,
+        _timestamp=datetime(2026, 4, 13, 14, 0),
+    )
     wednesday_event = EconomicEvent(
         id="wednesday",
         time="09:00",
@@ -98,6 +107,38 @@ async def test_week_events_cache_hit_returns_events_ordered(mock_repo, mock_prov
         currency="EUR",
         importance=Importance.MEDIUM,
         _timestamp=datetime(2026, 4, 15, 9, 0),
+    )
+    mock_repo.is_range_cache_valid.return_value = True
+    mock_repo.get_events_in_range.side_effect = [
+        [wednesday_event, monday_event],
+        [monday_event, wednesday_event],
+    ]
+    mock_provider.fetch_events_in_range.return_value = [monday_event, wednesday_event]
+
+    use_case = GetWeekEventsUseCase(
+        mock_provider,
+        mock_repo,
+        start_date=date(2026, 4, 13),
+        end_date=date(2026, 4, 17),
+    )
+
+    events = await use_case.execute()
+
+    assert [event.id for event in events] == ["monday", "wednesday"]
+    mock_provider.fetch_events_in_range.assert_awaited_once_with(
+        date(2026, 4, 13), date(2026, 4, 17)
+    )
+
+
+async def test_week_events_cache_hit_returns_events_ordered(mock_repo, mock_provider):
+    tuesday_event = EconomicEvent(
+        id="tuesday",
+        time="09:00",
+        title="Tuesday",
+        country="EU",
+        currency="EUR",
+        importance=Importance.MEDIUM,
+        _timestamp=datetime(2026, 4, 14, 9, 0),
     )
     monday_event = EconomicEvent(
         id="monday",
@@ -109,18 +150,18 @@ async def test_week_events_cache_hit_returns_events_ordered(mock_repo, mock_prov
         _timestamp=datetime(2026, 4, 13, 14, 0),
     )
     mock_repo.is_range_cache_valid.return_value = True
-    mock_repo.get_events_in_range.return_value = [wednesday_event, monday_event]
+    mock_repo.get_events_in_range.return_value = [tuesday_event, monday_event]
 
     use_case = GetWeekEventsUseCase(
         mock_provider,
         mock_repo,
         start_date=date(2026, 4, 13),
-        end_date=date(2026, 4, 19),
+        end_date=date(2026, 4, 14),
     )
 
     events = await use_case.execute()
 
-    assert [event.id for event in events] == ["monday", "wednesday"]
+    assert [event.id for event in events] == ["monday", "tuesday"]
     mock_provider.fetch_events_in_range.assert_not_called()
 
 
