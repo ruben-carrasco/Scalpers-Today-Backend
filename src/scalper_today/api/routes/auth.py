@@ -194,6 +194,21 @@ async def login(request: LoginRequest, container: ContainerDep, req: Request):
         )
 
 
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Current user returned successfully"},
+        401: {"model": ErrorResponse, "description": "Invalid or expired token"},
+    },
+    summary="Get current user",
+    description="Return the authenticated user associated with the bearer token.",
+)
+async def get_current_user(current_user=Depends(get_current_user_dep)):
+    return _map_user_to_response(current_user)
+
+
 @router.post(
     "/password-reset/request",
     response_model=PasswordResetResponse,

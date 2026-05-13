@@ -26,6 +26,32 @@ def test_register_new_user(client):
     assert "access_token" in data["token"]
 
 
+def test_get_current_user_with_bearer_token(client):
+    import uuid
+
+    random_email = f"me_{uuid.uuid4().hex[:6]}@example.com"
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": random_email,
+            "password": "strongPassword123",
+            "name": "Session User",
+        },
+    )
+    assert register_response.status_code == 201
+    token = register_response.json()["token"]["access_token"]
+
+    response = client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == random_email
+    assert data["name"] == "Session User"
+
+
 def test_register_duplicate_user(client):
     import uuid
 
