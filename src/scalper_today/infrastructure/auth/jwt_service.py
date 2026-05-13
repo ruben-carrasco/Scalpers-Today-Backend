@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -25,6 +26,7 @@ class JWTService(IAuthService):
         self.token_expire_days = token_expire_days
         self.password_reset_expire_minutes = password_reset_expire_minutes
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self._password_reset_codes: dict[str, tuple[str, datetime]] = {}
 
     async def hash_password(self, password: str) -> str:
         loop = asyncio.get_event_loop()
@@ -74,20 +76,33 @@ class JWTService(IAuthService):
 
     def create_password_reset_token(self, user: User) -> str:
         expire = datetime.now(UTC) + timedelta(minutes=self.password_reset_expire_minutes)
-        payload = {
-            "sub": user.id,
-            "email": user.email,
-            "purpose": "password_reset",
-            "exp": expire,
-            "iat": datetime.now(UTC),
-            "jti": str(uuid.uuid4()),
-        }
+        self._remove_expired_password_reset_codes()
+        code = self._generate_password_reset_code()
+        self._password_reset_codes[code] = (user.id, expire)
 
-        logger.info(f"Created password reset token for user: {user.email}")
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+        logger.info(f"Created password reset code for user: {user.email}")
+        return code
 
     def get_user_id_from_password_reset_token(self, token: str) -> str | None:
+        self._remove_expired_password_reset_codes()
+        code_entry = self._password_reset_codes.pop(token.strip(), None)
+        if code_entry:
+            return code_entry[0]
+
         payload = self.verify_token(token)
         if not payload or payload.get("purpose") != "password_reset":
             return None
         return payload.get("sub")
+
+    def _generate_password_reset_code(self) -> str:
+        for _ in range(10):
+            code = f"{secrets.randbelow(1_000_000):06d}"
+            if code not in self._password_reset_codes:
+                return code
+        return f"{secrets.randbelow(1_000_000):06d}"
+
+    def _remove_expired_password_reset_codes(self) -> None:
+        now = datetime.now(UTC)
+        self._password_reset_codes = {
+            code: entry for code, entry in self._password_reset_codes.items() if entry[1] > now
+        }
