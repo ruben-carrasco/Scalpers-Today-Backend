@@ -242,6 +242,20 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             logger.error(f"Failed to parse briefing response: {e}")
             return DailyBriefing.error("Error parseando respuesta de IA")
 
+    async def generate_assistant_response(
+        self,
+        question: str,
+        context: dict[str, str | int | None] | None = None,
+    ) -> str:
+        if not self._is_configured:
+            raise ExternalServiceError("OpenRouter", "Servicio de IA no configurado")
+
+        prompt = self._build_assistant_prompt(question=question, context=context or {})
+        response = await self._call_text_api(prompt, temperature=0.3, max_tokens=900)
+        if not response:
+            raise ExternalServiceError("OpenRouter", "Respuesta vacía del asistente")
+        return response.strip()
+
     def _dict_to_ai_analysis(self, data: dict) -> AIAnalysis:
         return AIAnalysis(
             summary=data.get("resumen", data.get("summary", "N/A")),
@@ -328,6 +342,61 @@ class OpenRouterAnalyzer(IAIAnalyzer):
             error_msg += f": {last_exception}"
         raise ExternalServiceError("OpenRouter", error_msg)
 
+    async def _call_text_api(
+        self, prompt: str, temperature: float = 0.2, max_tokens: int = 1000
+    ) -> str | None:
+        last_exception = None
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                response = await self._client.post(
+                    self._settings.openrouter_url,
+                    json={
+                        "model": self._settings.openrouter_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    },
+                    headers=self._headers,
+                    timeout=self._settings.http_timeout_seconds,
+                )
+
+                if response.status_code == 200:
+                    return response.json()["choices"][0]["message"]["content"]
+
+                if 400 <= response.status_code < 500 and response.status_code != 429:
+                    logger.error(
+                        f"OpenRouter client error {response.status_code}: {response.text[:200]}"
+                    )
+                    raise ExternalServiceError(
+                        "OpenRouter",
+                        f"API returned {response.status_code}",
+                    )
+
+                logger.warning(
+                    f"OpenRouter text error {response.status_code} "
+                    f"(attempt {attempt}/{self.MAX_RETRIES})"
+                )
+            except ExternalServiceError:
+                raise
+            except httpx.TimeoutException as e:
+                logger.warning(f"OpenRouter text timeout (attempt {attempt}/{self.MAX_RETRIES})")
+                last_exception = e
+            except KeyError as e:
+                logger.error(f"Unexpected text API response structure: {e}")
+                raise ExternalServiceError("OpenRouter", f"Unexpected response: {e}")
+            except Exception as e:
+                logger.warning(f"Text API call failed: {e} (attempt {attempt}/{self.MAX_RETRIES})")
+                last_exception = e
+
+            if attempt < self.MAX_RETRIES:
+                delay = self.RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                await asyncio.sleep(delay)
+
+        error_msg = f"OpenRouter text failed after {self.MAX_RETRIES} attempts"
+        if last_exception:
+            error_msg += f": {last_exception}"
+        raise ExternalServiceError("OpenRouter", error_msg)
+
     @staticmethod
     def _parse_json(content: str) -> dict | None:
         clean = content.strip()
@@ -359,6 +428,39 @@ class OpenRouterAnalyzer(IAIAnalyzer):
         candidates.extend(clean[index:].strip() for index, char in enumerate(clean) if char == "{")
 
         return candidates
+
+    @staticmethod
+    def _build_assistant_prompt(question: str, context: dict[str, str | int | None]) -> str:
+        context_lines = "\n".join(
+            f"- {key}: {value}"
+            for key, value in context.items()
+            if value is not None and str(value).strip()
+        )
+        context_block = context_lines or "- Sin contexto adicional."
+
+        return f"""Actúa como asistente educativo de Scalpers Today.
+
+OBJETIVO:
+- Ayudar al usuario a entender conceptos macroeconómicos, eventos del calendario, datos de la app y análisis IA.
+- Responder en español claro, breve y útil.
+
+LÍMITES:
+- No des recomendaciones personalizadas de inversión.
+- No digas "compra", "vende", "abre largo", "abre corto" ni señales operativas directas.
+- Si el usuario pide una señal, explica escenarios generales y riesgos.
+- Incluye una frase corta de prudencia si la respuesta puede afectar decisiones financieras.
+
+FORMATO:
+- Máximo 4 párrafos cortos.
+- Usa bullets solo si mejora la claridad.
+- Si falta información, dilo explícitamente.
+
+CONTEXTO DE LA APP:
+{context_block}
+
+PREGUNTA DEL USUARIO:
+{question}
+"""
 
     @staticmethod
     def _build_quick_analysis_prompt(events_data: list) -> str:

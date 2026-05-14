@@ -6,6 +6,7 @@ from .alerts import (
     RegisterDeviceTokenRequest,
     UpdateAlertRequest,
 )
+from .assistant import AssistantChatContext, AssistantChatRequest, AssistantChatResponse
 from .auth import (
     AuthResponse,
     LoginRequest,
@@ -59,6 +60,9 @@ __all__ = [
     "ErrorResponse",
     "BackfillAnalysisResponse",
     "AlertConditionSchema",
+    "AssistantChatContext",
+    "AssistantChatRequest",
+    "AssistantChatResponse",
     "CreateAlertRequest",
     "UpdateAlertRequest",
     "AlertResponse",

@@ -15,3 +15,11 @@ class IAIAnalyzer(ABC):
     @abstractmethod
     async def generate_briefing(self, events: list[EconomicEvent]) -> DailyBriefing:
         pass
+
+    @abstractmethod
+    async def generate_assistant_response(
+        self,
+        question: str,
+        context: dict[str, str | int | None] | None = None,
+    ) -> str:
+        pass
