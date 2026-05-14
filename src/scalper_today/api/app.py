@@ -22,6 +22,7 @@ API_KEY_PROTECTED_PATHS = {
 }
 JWT_PROTECTED_PATHS = {
     "/api/v1/auth/me",
+    "/api/v1/assistant/chat",
 }
 
 
@@ -133,6 +134,10 @@ def create_app() -> FastAPI:
             "name": "Alerts",
             "description": "JWT-protected user alerts and push notification device tokens.",
         },
+        {
+            "name": "Assistant",
+            "description": "JWT-protected educational AI assistant for app and macroeconomic concepts.",
+        },
     ]
 
     app = FastAPI(
@@ -176,10 +181,11 @@ def create_app() -> FastAPI:
     app.include_router(core_router, prefix="/api/v1")
     app.include_router(events_router, prefix="/api/v1")
 
-    from .routes import alerts, auth
+    from .routes import alerts, assistant, auth
 
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(alerts.router, prefix="/api/v1")
+    app.include_router(assistant.router, prefix="/api/v1")
 
     register_exception_handlers(app)
 
