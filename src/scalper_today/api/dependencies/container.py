@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -49,6 +50,7 @@ from scalper_today.infrastructure.notifications.notification_scheduler import No
 
 logger = logging.getLogger(__name__)
 TZ_MADRID = pytz.timezone("Europe/Madrid")
+WEEK_ANALYSIS_BACKFILL_TIMEOUT_SECONDS = 3.0
 
 
 def _current_week_range(target_date: date) -> tuple[date, date]:
@@ -138,24 +140,55 @@ class Container:
             events = await use_case.execute(force_refresh=force_refresh)
 
             if week_start <= madrid_date <= week_end:
-                backfill = BackfillEventAnalysisUseCase(
+                result = await self._try_complete_today_week_analysis(
                     repository=repository,
-                    analyzer=self.analyzer,
-                    start_date=madrid_date,
-                    end_date=madrid_date,
+                    target_date=madrid_date,
                 )
-                result = await backfill.execute(include_deep=True)
-                if result.quick_saved or result.deep_saved:
-                    logger.info(
-                        "Completed missing analysis for today's week events",
-                        extra={
-                            "quick_saved": result.quick_saved,
-                            "deep_saved": result.deep_saved,
-                        },
-                    )
+                if result and (result.quick_saved or result.deep_saved):
                     events = await repository.get_events_in_range(week_start, week_end)
 
             return events
+
+    async def _try_complete_today_week_analysis(
+        self,
+        repository: IEventRepository,
+        target_date: date,
+    ) -> BackfillEventAnalysisResult | None:
+        backfill = BackfillEventAnalysisUseCase(
+            repository=repository,
+            analyzer=self.analyzer,
+            start_date=target_date,
+            end_date=target_date,
+        )
+
+        try:
+            result = await asyncio.wait_for(
+                backfill.execute(include_deep=True),
+                timeout=WEEK_ANALYSIS_BACKFILL_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            logger.warning(
+                "Skipping week response AI backfill because it exceeded timeout",
+                extra={"target_date": str(target_date)},
+            )
+            return None
+        except Exception as exc:
+            logger.warning(
+                "Skipping week response AI backfill after failure",
+                extra={"target_date": str(target_date), "error": str(exc)},
+            )
+            return None
+
+        if result.quick_saved or result.deep_saved:
+            logger.info(
+                "Completed missing analysis for today's week events",
+                extra={
+                    "quick_saved": result.quick_saved,
+                    "deep_saved": result.deep_saved,
+                },
+            )
+
+        return result
 
     async def get_daily_briefing(self) -> DailyBriefing:
         madrid_date = datetime.now(TZ_MADRID).date()
