@@ -200,13 +200,20 @@ class Container:
             return await use_case.execute()
 
     async def get_home_summary(self) -> HomeSummary:
-        events = await self.get_macro_events()
+        madrid_date = datetime.now(TZ_MADRID).date()
 
-        try:
-            briefing = await self.get_daily_briefing()
-        except Exception as e:
-            logger.error(f"Home summary briefing error (using fallback): {e}")
-            briefing = DailyBriefing.error("Briefing temporalmente no disponible")
+        async with self.database_manager.session() as session:
+            repository = self.get_event_repository(session)
+            events = await repository.get_events_by_date(madrid_date)
+            briefing = await repository.get_daily_briefing(madrid_date)
+
+        if not events:
+            logger.info("Home summary has no cached events, fetching today's events")
+            events = await self.get_macro_events()
+
+        if briefing is None:
+            logger.info("Home summary has no cached briefing, using lightweight fallback")
+            briefing = DailyBriefing.empty_day(total_events=len(events))
 
         use_case = GetHomeSummaryUseCase()
         return use_case.execute(events, briefing)
