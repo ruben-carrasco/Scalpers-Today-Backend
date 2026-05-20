@@ -50,7 +50,7 @@ from scalper_today.infrastructure.notifications.notification_scheduler import No
 
 logger = logging.getLogger(__name__)
 TZ_MADRID = pytz.timezone("Europe/Madrid")
-WEEK_ANALYSIS_BACKFILL_TIMEOUT_SECONDS = 3.0
+WEEK_ANALYSIS_BACKFILL_TIMEOUT_SECONDS = 30.0
 
 
 def _current_week_range(target_date: date) -> tuple[date, date]:
