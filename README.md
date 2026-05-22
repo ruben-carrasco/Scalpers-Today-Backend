@@ -172,7 +172,7 @@ Archivo base: [.env.example](/Users/rubencarrascofrias/Documents/TFG/proyecto/.e
 - `JWT_TOKEN_EXPIRE_DAYS`
 - `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`
 - `PASSWORD_RESET_URL_TEMPLATE`
-- `GOOGLE_CLIENT_ID_IOS`, `GOOGLE_CLIENT_ID_ANDROID`, `GOOGLE_CLIENT_ID_WEB`
+- `GOOGLE_CLIENT_ID` (Client ID de Google OAuth usado para validar `id_token`)
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`
 
 El restablecimiento de contraseña usa SMTP si está configurado. En desarrollo y test el endpoint
