@@ -77,6 +77,7 @@ class Settings(BaseSettings):
         return bool(self.openrouter_api_key and self.openrouter_api_key != "your_api_key_here")
 
     jwt_secret_key: str = Field(default="", description="JWT secret key for signing tokens")
+    google_client_id: str = Field(default="", description="Google OAuth Client ID for token verification")
     jwt_algorithm: str = "HS256"
     jwt_token_expire_days: int = 7
     password_reset_token_expire_minutes: int = 30
