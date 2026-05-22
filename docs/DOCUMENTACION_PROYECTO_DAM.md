@@ -1,5 +1,14 @@
 # PROYECTO DAM
 
+> [!WARNING]
+> Documento histórico de una fase temprana del proyecto.
+> Puede contener decisiones ya sustituidas, como referencias a scraping sobre Investing.com
+> o a flujos anteriores al estado final del TFG.
+>
+> Para el estado real actualizado del backend, consultar primero:
+> - [README.md](/Users/rubencarrascofrias/Documents/TFG/proyecto/README.md)
+> - [API_REFERENCE.md](/Users/rubencarrascofrias/Documents/TFG/proyecto/docs/API_REFERENCE.md)
+
 ## IES NERVIÓN
 ### Scalper Today API
 

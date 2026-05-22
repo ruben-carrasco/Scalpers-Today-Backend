@@ -1,6 +1,6 @@
 # ScalperToday Backend
 
-Backend de `ScalperToday`, una API FastAPI orientada a calendario macroeconómico, briefing con IA, alertas personalizadas y notificaciones push para la app móvil.
+Backend de `ScalperToday`, una API FastAPI orientada a calendario macroeconómico, briefing con IA, alertas personalizadas, autenticación y notificaciones push para la app móvil.
 
 Este repositorio está documentado con enfoque de desarrollador: arquitectura real, ejecución local, despliegue y decisiones técnicas relevantes para mantenimiento y memoria de TFG.
 
@@ -8,10 +8,10 @@ Este repositorio está documentado con enfoque de desarrollador: arquitectura re
 
 El backend centraliza cuatro responsabilidades:
 
-- obtener y normalizar eventos macroeconómicos del día;
-- enriquecer esos eventos con análisis generado por IA;
+- obtener y normalizar eventos macroeconómicos de la semana operativa;
+- enriquecer los eventos del día con análisis generado por IA y reforzar los de alto impacto con análisis detallado;
 - exponer endpoints consumidos por la aplicación móvil;
-- gestionar autenticación, alertas y tokens de dispositivos para push.
+- gestionar autenticación, reseteo de contraseña, alertas y tokens de dispositivos para push.
 
 ## Stack técnico
 
@@ -75,30 +75,32 @@ Ahí se inicializan:
 ### 1. Eventos macroeconómicos
 
 1. `GET /api/v1/macro` llama a `get_macro_events()`.
-2. El caso de uso consulta primero la base de datos para eventos de hoy.
+2. El caso de uso consulta primero la base de datos para la semana actual.
 3. Si no hay datos válidos, usa el provider configurado en `EVENT_PROVIDER`.
-4. El provider descarga datos externos, filtra por fecha actual en `Europe/Madrid` y normaliza a `EconomicEvent`.
-5. El backend persiste eventos y expone el resultado a la app.
+4. El provider descarga datos externos, normaliza a `EconomicEvent` y el backend persiste el resultado para la app.
+5. Los eventos del día se usan además como base para el briefing y el análisis IA.
 
 ### 2. Briefing y análisis IA
 
-1. A partir de los eventos de hoy se generan resúmenes y análisis.
+1. A partir de los eventos del día se generan resúmenes y análisis.
 2. El backend usa OpenRouter para producir `summary`, `macroContext`, `technicalLevels` y `tradingStrategies`.
-3. La app móvil consume esos textos desde `home`, `brief` y detalle de evento.
+3. Los eventos de alto impacto pueden incluir un análisis más profundo que el resumen rápido estándar.
+4. La app móvil consume esos textos desde `home`, `brief`, detalle de evento y chatbot asistido.
 
 ### 3. Alertas y push
 
 1. El usuario crea alertas autenticado por JWT.
 2. El backend guarda condiciones, estado y `push_enabled`.
 3. Los tokens Expo del dispositivo se registran en `/api/v1/alerts/device-token`.
-4. El scheduler revisa eventos cercanos y dispara notificaciones cuando se cumplen condiciones.
+4. El scheduler revisa eventos cercanos cada `NOTIFICATION_CHECK_INTERVAL` segundos y usa `NOTIFICATION_BEFORE_MINUTES` como ventana previa.
+5. Si se cumplen las condiciones, el backend envía la push a Expo y actualiza `trigger_count` y `last_triggered_at`.
 
 ## Fuente de datos actual
 
 La fuente activa del calendario se controla con `EVENT_PROVIDER`:
 
-- valor por defecto: `forexfactory`
-- alternativa: `rapidapi`
+- valor recomendado para la entrega: `rapidapi`
+- fallback automático: `forexfactory`
 - variable: `FOREXFACTORY_CALENDAR_URL`
 - valor por defecto: `https://nfs.faireconomy.media/ff_calendar_thisweek.json`
 - variables RapidAPI: `RAPIDAPI_CALENDAR_KEY`, `RAPIDAPI_CALENDAR_HOST`, `RAPIDAPI_CALENDAR_URL`
@@ -118,7 +120,10 @@ Importante:
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/google`
 - `GET /api/v1/auth/me`
+- `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/reset-password`
 
 El backend firma tokens con `JWT_SECRET_KEY` y valida el acceso en rutas protegidas como `/api/v1/alerts/*`.
 
@@ -156,6 +161,8 @@ Archivo base: [.env.example](/Users/rubencarrascofrias/Documents/TFG/proyecto/.e
 - `FOREXFACTORY_CALENDAR_URL`
 - `RAPIDAPI_CALENDAR_HOST`
 - `RAPIDAPI_CALENDAR_URL`
+- `RAPIDAPI_CALENDAR_TIMEZONE`
+- `RAPIDAPI_CALENDAR_LIMIT`
 - `DATABASE_PATH`
 - `APP_ENV`
 - `APP_DEBUG`
@@ -165,7 +172,8 @@ Archivo base: [.env.example](/Users/rubencarrascofrias/Documents/TFG/proyecto/.e
 - `JWT_TOKEN_EXPIRE_DAYS`
 - `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`
 - `PASSWORD_RESET_URL_TEMPLATE`
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`
+- `GOOGLE_CLIENT_ID_IOS`, `GOOGLE_CLIENT_ID_ANDROID`, `GOOGLE_CLIENT_ID_WEB`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`
 
 El restablecimiento de contraseña usa SMTP si está configurado. En desarrollo y test el endpoint
 devuelve también el token para poder probar el flujo sin proveedor de correo; en producción el
@@ -213,6 +221,7 @@ Documentación interactiva:
 
 ```bash
 ruff check .
+ruff format --check .
 ```
 
 ### Tests
@@ -245,6 +254,7 @@ Antes de desplegar, conviene revisar:
 - El rate limiting actual es en memoria y no distribuido.
 - El calendario económico depende de una fuente externa gratuita y no contractual.
 - El análisis IA depende de OpenRouter; sin clave, el sistema puede arrancar pero degradará funcionalidades de análisis.
+- El chatbot reutiliza el mismo proveedor de IA y comparte sus límites de disponibilidad y coste.
 - `push_enabled` y `status` de una alerta son conceptos distintos: una alerta puede seguir activa pero no enviar push.
 
 ## Documentación relacionada
